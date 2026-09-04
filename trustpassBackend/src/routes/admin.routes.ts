@@ -15,6 +15,7 @@ import {
     createPackage,
     updatePackage,
     deactivatePackage,
+    getDashboard,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -24,6 +25,13 @@ router.get(
     authenticate,
     authorize("ADMIN"),
     getClients
+);
+
+router.get(
+    "/dashboard",
+    authenticate,
+    authorize("ADMIN"),
+    getDashboard
 );
 
 router.get(

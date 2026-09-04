@@ -1,47 +1,29 @@
-import { Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { getHealth } from "../services/api";
-
-function Landing() {
-    return <h1>TrustPass</h1>;
-}
-
-function Login() {
-    return <h1>Login</h1>;
-}
-
-function Register() {
-    return <h1>Register</h1>;
-}
-
-function Dashboard() {
-    const [message, setMessage] = useState("Connecting...");
-
-    useEffect(() => {
-        getHealth()
-            .then((data) => {
-                setMessage(data.message);
-            })
-            .catch(() => {
-                setMessage("Backend connection failed");
-            });
-    }, []);
-
-    return (
-        <div>
-            <h1>Dashboard</h1>
-            <p>{message}</p>
-        </div>
-    );
-}
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AdminLayout } from "../layouts/AdminLayout";
+import { AdminDashboard } from "../pages/admin/AdminDashboard";
+import { AdminLogin } from "../pages/admin/AdminLogin";
+import { BlankPage } from "../pages/admin/BlankPage";
 
 export default function AppRoutes() {
-    return (
-        <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-    );
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/admin" replace />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="clients" element={<BlankPage />} />
+        <Route path="packages" element={<BlankPage />} />
+        <Route path="subscriptions" element={<BlankPage />} />
+        <Route path="apis" element={<BlankPage />} />
+        <Route path="api-usage" element={<BlankPage />} />
+        <Route path="fraud" element={<BlankPage />} />
+        <Route path="ai-policies" element={<BlankPage />} />
+        <Route path="transactions" element={<BlankPage />} />
+        <Route path="reports" element={<BlankPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/admin" replace />} />
+    </Routes>
+  );
 }
