@@ -183,3 +183,178 @@ export async function updateClient(req: Request, res: Response) {
         });
     }
 }
+export async function activateClient(req: Request, res: Response) {
+    try {
+        const clientId = Number(req.params.id);
+
+        if (!Number.isInteger(clientId)) {
+            return res.status(400).json({
+                message: "Invalid client ID",
+            });
+        }
+
+        const existingClient = await prisma.client.findUnique({
+            where: { id: clientId },
+        });
+
+        if (!existingClient) {
+            return res.status(404).json({
+                message: "Client not found",
+            });
+        }
+
+        const client = await prisma.client.update({
+            where: { id: clientId },
+            data: {
+                isActive: true,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        return res.status(200).json({
+            message: "Client activated successfully",
+            client,
+        });
+    } catch (error) {
+        console.error("Failed to activate client:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+export async function deactivateClient(req: Request, res: Response) {
+    try {
+        const clientId = Number(req.params.id);
+
+        if (!Number.isInteger(clientId)) {
+            return res.status(400).json({
+                message: "Invalid client ID",
+            });
+        }
+
+        const existingClient = await prisma.client.findUnique({
+            where: { id: clientId },
+        });
+
+        if (!existingClient) {
+            return res.status(404).json({
+                message: "Client not found",
+            });
+        }
+
+        const client = await prisma.client.update({
+            where: { id: clientId },
+            data: {
+                isActive: false,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        return res.status(200).json({
+            message: "Client deactivated successfully",
+            client,
+        });
+    } catch (error) {
+        console.error("Failed to deactivate client:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+export async function getClientDetails(req: Request, res: Response) {
+  try {
+    const clientId = Number(req.params.id);
+
+    if (!Number.isInteger(clientId)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: {
+        id: clientId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+
+        subscriptions: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            requestsUsed: true,
+            isActive: true,
+            paymentStatus: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+                requestLimit: true,
+                price: true,
+                durationDays: true,
+                features: true,
+              },
+            },
+          },
+        },
+
+        apiUsage: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 20,
+          select: {
+            id: true,
+            endpoint: true,
+            method: true,
+            statusCode: true,
+            requestId: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
+      });
+    }
+
+    return res.status(200).json({
+      client,
+    });
+  } catch (error) {
+    console.error("Failed to retrieve client details:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}

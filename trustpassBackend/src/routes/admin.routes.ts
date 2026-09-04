@@ -9,6 +9,9 @@ import {
     getClients,
     createClient,
     updateClient,
+    activateClient,
+    deactivateClient,
+    getClientDetails,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -18,6 +21,13 @@ router.get(
     authenticate,
     authorize("ADMIN"),
     getClients
+);
+
+router.get(
+    "/clients/:id",
+    authenticate,
+    authorize("ADMIN"),
+    getClientDetails
 );
 
 router.post(
@@ -32,6 +42,20 @@ router.put(
     authenticate,
     authorize("ADMIN"),
     updateClient
+);
+
+router.patch(
+    "/clients/:id/activate",
+    authenticate,
+    authorize("ADMIN"),
+    activateClient
+);
+
+router.patch(
+    "/clients/:id/deactivate",
+    authenticate,
+    authorize("ADMIN"),
+    deactivateClient
 );
 
 export default router;
