@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "../config/prisma";
 import jwt from "jsonwebtoken";
+import { revokeToken } from "../services/token.service";
 
 const registerClientSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -132,4 +133,30 @@ export async function loginClient(req: Request, res: Response) {
             message: "Internal server error",
         });
     }
+}
+
+export async function logoutClient(req: Request, res: Response) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    revokeToken(token);
+
+    return res.status(200).json({
+      message: "Client logout successful",
+    });
+  } catch (error) {
+    console.error("Client logout failed:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 }

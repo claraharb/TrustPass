@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { isTokenRevoked } from "../services/token.service";
 
 export interface AuthenticatedRequest extends Request {
     user?: {
@@ -24,6 +25,11 @@ export function authenticate(
         }
 
         const token = authHeader.split(" ")[1];
+        if (isTokenRevoked(token)) {
+            return res.status(401).json({
+                message: "Token has been revoked",
+             });
+        }
 
         const decoded = jwt.verify(
             token,
