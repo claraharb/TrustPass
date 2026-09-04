@@ -279,82 +279,290 @@ export async function deactivateClient(req: Request, res: Response) {
 }
 
 export async function getClientDetails(req: Request, res: Response) {
-  try {
-    const clientId = Number(req.params.id);
+    try {
+        const clientId = Number(req.params.id);
 
-    if (!Number.isInteger(clientId)) {
-      return res.status(400).json({
-        message: "Invalid client ID",
-      });
-    }
+        if (!Number.isInteger(clientId)) {
+            return res.status(400).json({
+                message: "Invalid client ID",
+            });
+        }
 
-    const client = await prisma.client.findUnique({
-      where: {
-        id: clientId,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-
-        subscriptions: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          select: {
-            id: true,
-            startDate: true,
-            endDate: true,
-            requestsUsed: true,
-            isActive: true,
-            paymentStatus: true,
-            package: {
-              select: {
+        const client = await prisma.client.findUnique({
+            where: {
+                id: clientId,
+            },
+            select: {
                 id: true,
                 name: true,
+                email: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+
+                subscriptions: {
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                    select: {
+                        id: true,
+                        startDate: true,
+                        endDate: true,
+                        requestsUsed: true,
+                        isActive: true,
+                        paymentStatus: true,
+                        package: {
+                            select: {
+                                id: true,
+                                name: true,
+                                requestLimit: true,
+                                price: true,
+                                durationDays: true,
+                                features: true,
+                            },
+                        },
+                    },
+                },
+
+                apiUsage: {
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                    take: 20,
+                    select: {
+                        id: true,
+                        endpoint: true,
+                        method: true,
+                        statusCode: true,
+                        requestId: true,
+                        createdAt: true,
+                    },
+                },
+            },
+        });
+
+        if (!client) {
+            return res.status(404).json({
+                message: "Client not found",
+            });
+        }
+
+        return res.status(200).json({
+            client,
+        });
+    } catch (error) {
+        console.error("Failed to retrieve client details:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+const createPackageSchema = z.object({
+    name: z.string().min(2, "Package name must be at least 2 characters"),
+    description: z.string().optional(),
+    requestLimit: z.number().int().positive("Request limit must be greater than 0"),
+    price: z.number().nonnegative("Price cannot be negative"),
+    durationDays: z.number().int().positive("Duration must be greater than 0"),
+    features: z.string().min(1, "At least one API/feature must be specified"),
+});
+
+export async function createPackage(req: Request, res: Response) {
+    try {
+        const validation = createPackageSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Validation failed",
+                errors: validation.error.issues,
+            });
+        }
+
+        const {
+            name,
+            description,
+            requestLimit,
+            price,
+            durationDays,
+            features,
+        } = validation.data;
+
+        const existingPackage = await prisma.package.findUnique({
+            where: { name },
+        });
+
+        if (existingPackage) {
+            return res.status(409).json({
+                message: "A package with this name already exists",
+            });
+        }
+
+        const packageData = await prisma.package.create({
+            data: {
+                name,
+                description,
+                requestLimit,
+                price,
+                durationDays,
+                features,
+            },
+            select: {
+                id: true,
+                name: true,
+                description: true,
                 requestLimit: true,
                 price: true,
                 durationDays: true,
                 features: true,
-              },
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
             },
-          },
-        },
+        });
 
-        apiUsage: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 20,
-          select: {
-            id: true,
-            endpoint: true,
-            method: true,
-            statusCode: true,
-            requestId: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+        return res.status(201).json({
+            message: "Package created successfully",
+            package: packageData,
+        });
+    } catch (error) {
+        console.error("Failed to create package:", error);
 
-    if (!client) {
-      return res.status(404).json({
-        message: "Client not found",
-      });
+        return res.status(500).json({
+            message: "Internal server error",
+        });
     }
+}
+const updatePackageSchema = z.object({
+    name: z.string().min(2, "Package name must be at least 2 characters").optional(),
+    description: z.string().optional(),
+    requestLimit: z.number().int().positive("Request limit must be greater than 0").optional(),
+    price: z.number().nonnegative("Price cannot be negative").optional(),
+    durationDays: z.number().int().positive("Duration must be greater than 0").optional(),
+    features: z.string().min(1, "At least one API/feature must be specified").optional(),
+});
 
-    return res.status(200).json({
-      client,
-    });
-  } catch (error) {
-    console.error("Failed to retrieve client details:", error);
+export async function updatePackage(req: Request, res: Response) {
+    try {
+        const packageId = Number(req.params.id);
 
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  }
+        if (!Number.isInteger(packageId)) {
+            return res.status(400).json({
+                message: "Invalid package ID",
+            });
+        }
+
+        const validation = updatePackageSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Validation failed",
+                errors: validation.error.issues,
+            });
+        }
+
+        const existingPackage = await prisma.package.findUnique({
+            where: { id: packageId },
+        });
+
+        if (!existingPackage) {
+            return res.status(404).json({
+                message: "Package not found",
+            });
+        }
+
+        const { name } = validation.data;
+
+        if (name && name !== existingPackage.name) {
+            const duplicatePackage = await prisma.package.findUnique({
+                where: { name },
+            });
+
+            if (duplicatePackage) {
+                return res.status(409).json({
+                    message: "A package with this name already exists",
+                });
+            }
+        }
+
+        const packageData = await prisma.package.update({
+            where: { id: packageId },
+            data: validation.data,
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                requestLimit: true,
+                price: true,
+                durationDays: true,
+                features: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        return res.status(200).json({
+            message: "Package updated successfully",
+            package: packageData,
+        });
+    } catch (error) {
+        console.error("Failed to update package:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+export async function deactivatePackage(req: Request, res: Response) {
+    try {
+        const packageId = Number(req.params.id);
+
+        if (!Number.isInteger(packageId)) {
+            return res.status(400).json({
+                message: "Invalid package ID",
+            });
+        }
+
+        const existingPackage = await prisma.package.findUnique({
+            where: { id: packageId },
+        });
+
+        if (!existingPackage) {
+            return res.status(404).json({
+                message: "Package not found",
+            });
+        }
+
+        const packageData = await prisma.package.update({
+            where: { id: packageId },
+            data: {
+                isActive: false,
+            },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                requestLimit: true,
+                price: true,
+                durationDays: true,
+                features: true,
+                isActive: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        return res.status(200).json({
+            message: "Package deactivated successfully",
+            package: packageData,
+        });
+    } catch (error) {
+        console.error("Failed to deactivate package:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
 }

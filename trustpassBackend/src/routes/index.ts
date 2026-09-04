@@ -2,6 +2,8 @@ import { Router } from "express";
 import prisma from "../config/prisma";
 import authRoutes from "./auth.routes";
 import adminRoutes from "./admin.routes";
+import packageRoutes from "./package.routes";
+import subscriptionRoutes from "./subscription.routes";
 
 import {
     authenticate,
@@ -12,6 +14,9 @@ import {
 const router = Router();
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
+router.use("/packages", packageRoutes);
+router.use("/client/subscriptions", subscriptionRoutes);
+
 router.get("/health", async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;

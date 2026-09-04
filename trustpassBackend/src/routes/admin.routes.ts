@@ -12,6 +12,9 @@ import {
     activateClient,
     deactivateClient,
     getClientDetails,
+    createPackage,
+    updatePackage,
+    deactivatePackage,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -56,6 +59,27 @@ router.patch(
     authenticate,
     authorize("ADMIN"),
     deactivateClient
+);
+
+router.post(
+    "/packages",
+    authenticate,
+    authorize("ADMIN"),
+    createPackage
+);
+
+router.put(
+    "/packages/:id",
+    authenticate,
+    authorize("ADMIN"),
+    updatePackage
+);
+
+router.patch(
+    "/packages/:id/deactivate",
+    authenticate,
+    authorize("ADMIN"),
+    deactivatePackage
 );
 
 export default router;
