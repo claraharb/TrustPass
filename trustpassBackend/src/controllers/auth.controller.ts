@@ -6,133 +6,178 @@ import jwt from "jsonwebtoken";
 import { revokeToken } from "../services/token.service";
 
 const registerClientSchema = z.object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 const loginClientSchema = z.object({
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export async function registerClient(req: Request, res: Response) {
-    try {
-        const validation = registerClientSchema.safeParse(req.body);
+const loginAdminSchema = loginClientSchema;
 
-        if (!validation.success) {
-            return res.status(400).json({
-                message: "Validation failed",
-                errors: validation.error.issues,
-            });
-        }
+export async function loginAdmin(req: Request, res: Response) {
+  try {
+    const validation = loginAdminSchema.safeParse(req.body);
 
-        const { name, email, password } = validation.data;
-
-        const existingClient = await prisma.client.findUnique({
-            where: { email },
-        });
-
-        if (existingClient) {
-            return res.status(409).json({
-                message: "A client with this email already exists",
-            });
-        }
-
-        const passwordHash = await bcrypt.hash(password, 12);
-
-        const client = await prisma.client.create({
-            data: {
-                name,
-                email,
-                passwordHash,
-            },
-        });
-
-        return res.status(201).json({
-            message: "Client registered successfully",
-            client: {
-                id: client.id,
-                name: client.name,
-                email: client.email,
-            },
-        });
-    } catch (error) {
-        console.error("Client registration failed:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
+    if (!validation.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: validation.error.issues,
+      });
     }
+
+    const { email, password } = validation.data;
+    const admin = await prisma.admin.findUnique({ where: { email } });
+
+    if (
+      !admin ||
+      !admin.isActive ||
+      !(await bcrypt.compare(password, admin.passwordHash))
+    ) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    const token = jwt.sign(
+      { adminId: admin.id, role: "ADMIN" },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1h" },
+    );
+
+    return res.status(200).json({
+      message: "Admin login successful",
+      token,
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: "ADMIN",
+      },
+    });
+  } catch (error) {
+    console.error("Admin login failed:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function registerClient(req: Request, res: Response) {
+  try {
+    const validation = registerClientSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: validation.error.issues,
+      });
+    }
+
+    const { name, email, password } = validation.data;
+
+    const existingClient = await prisma.client.findUnique({
+      where: { email },
+    });
+
+    if (existingClient) {
+      return res.status(409).json({
+        message: "A client with this email already exists",
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const client = await prisma.client.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+      },
+    });
+
+    return res.status(201).json({
+      message: "Client registered successfully",
+      client: {
+        id: client.id,
+        name: client.name,
+        email: client.email,
+      },
+    });
+  } catch (error) {
+    console.error("Client registration failed:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 }
 
 export async function loginClient(req: Request, res: Response) {
-    try {
-        const validation = loginClientSchema.safeParse(req.body);
+  try {
+    const validation = loginClientSchema.safeParse(req.body);
 
-        if (!validation.success) {
-            return res.status(400).json({
-                message: "Validation failed",
-                errors: validation.error.issues,
-            });
-        }
-
-        const { email, password } = validation.data;
-
-        const client = await prisma.client.findUnique({
-            where: { email },
-        });
-
-        if (!client) {
-            return res.status(401).json({
-                message: "Invalid email or password",
-            });
-        }
-
-        if (!client.isActive) {
-            return res.status(403).json({
-                message: "Client account is inactive",
-            });
-        }
-
-        const passwordMatches = await bcrypt.compare(
-            password,
-            client.passwordHash
-        );
-
-        if (!passwordMatches) {
-            return res.status(401).json({
-                message: "Invalid email or password",
-            });
-        }
-        
-         const token = jwt.sign(
-            {
-                clientId: client.id,
-                role: "CLIENT",
-            },
-            process.env.JWT_SECRET!,
-            {
-                expiresIn: "1h",
-            }
-         );
-
-          return res.status(200).json({
-        message: "Client login successful",
-        token,
-        client: {
-            id: client.id,
-            name: client.name,
-            email: client.email,
-        },
-        });
-    } catch (error) {
-        console.error("Client login failed:", error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
+    if (!validation.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: validation.error.issues,
+      });
     }
+
+    const { email, password } = validation.data;
+
+    const client = await prisma.client.findUnique({
+      where: { email },
+    });
+
+    if (!client) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    if (!client.isActive) {
+      return res.status(403).json({
+        message: "Client account is inactive",
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, client.passwordHash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        clientId: client.id,
+        role: "CLIENT",
+      },
+      process.env.JWT_SECRET!,
+      {
+        expiresIn: "1h",
+      },
+    );
+
+    return res.status(200).json({
+      message: "Client login successful",
+      token,
+      client: {
+        id: client.id,
+        name: client.name,
+        email: client.email,
+      },
+    });
+  } catch (error) {
+    console.error("Client login failed:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 }
 
 export async function logoutClient(req: Request, res: Response) {
