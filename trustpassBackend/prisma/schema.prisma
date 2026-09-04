@@ -1,7 +1,192 @@
 generator client {
   provider = "prisma-client"
+  output   = "../src/generated"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Client {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  subscriptions Subscription[]
+  apiKeys       ApiKey[]
+  protectedActions ProtectedAction[]
+  trustRequests TrustRequest[]
+  apiUsage ApiUsage[]
+  fraudEvents FraudEvent[]
+}
+
+model Package {
+  id             Int            @id @default(autoincrement())
+  name           String         @unique
+  description    String?
+  requestLimit   Int
+  price          Decimal        @db.Decimal(10, 2)
+  durationDays   Int
+  features       String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id              Int       @id @default(autoincrement())
+  clientId        Int
+  packageId       Int
+  startDate       DateTime  @default(now())
+  endDate         DateTime
+  requestsUsed    Int       @default(0)
+  isActive        Boolean   @default(true)
+  paymentStatus   String    @default("SIMULATED")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client          Client    @relation(fields: [clientId], references: [id])
+  package         Package   @relation(fields: [packageId], references: [id])
+
+  @@index([clientId])
+  @@index([packageId])
+}
+
+
+model ApiKey {
+  id          Int       @id @default(autoincrement())
+  clientId    Int
+  keyPrefix   String
+  keyHash     String    @unique
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  usageCount  Int       @default(0)
+
+  client      Client    @relation(fields: [clientId], references: [id])
+  apiUsage ApiUsage[]
+
+  @@index([clientId])
+}
+
+model ProtectedAction {
+  id          Int       @id @default(autoincrement())
+  clientId    Int
+  name        String
+  description String?
+  riskLevel   String    @default("MEDIUM")
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client      Client    @relation(fields: [clientId], references: [id])
+  trustRequests TrustRequest[]
+
+  @@index([clientId])
+}
+
+model TrustRequest {
+  id                Int             @id @default(autoincrement())
+  clientId          Int
+  protectedActionId Int
+  requestId         String          @unique
+  phoneNumber       String?
+  ipAddress         String?
+  userAgent         String?
+  status            String          @default("PENDING")
+  createdAt         DateTime        @default(now())
+  completedAt       DateTime?
+
+  client            Client          @relation(fields: [clientId], references: [id])
+  protectedAction   ProtectedAction @relation(fields: [protectedActionId], references: [id])
+  riskSignals       RiskSignal[]
+  trustDecision     TrustDecision?
+  fraudEvents FraudEvent[]
+
+  @@index([clientId])
+  @@index([protectedActionId])
+  @@index([createdAt])
+}
+
+model RiskSignal {
+  id            Int          @id @default(autoincrement())
+  trustRequestId Int
+  signalType    String
+  source        String
+  value         String?
+  riskScore     Float?
+  isPositive    Boolean?
+  details       String?
+  createdAt     DateTime     @default(now())
+
+  trustRequest  TrustRequest @relation(fields: [trustRequestId], references: [id])
+
+  @@index([trustRequestId])
+  @@index([signalType])
+}
+
+model TrustDecision {
+  id             Int          @id @default(autoincrement())
+  trustRequestId Int          @unique
+  decision       String
+  trustScore     Float
+  riskLevel      String
+  explanation    String?
+  createdAt      DateTime     @default(now())
+
+  trustRequest   TrustRequest @relation(fields: [trustRequestId], references: [id])
+}
+
+model ApiUsage {
+  id          Int      @id @default(autoincrement())
+  clientId    Int
+  apiKeyId    Int?
+  endpoint    String
+  method      String
+  statusCode  Int
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  client      Client   @relation(fields: [clientId], references: [id])
+  apiKey      ApiKey?  @relation(fields: [apiKeyId], references: [id])
+
+  @@index([clientId])
+  @@index([apiKeyId])
+  @@index([createdAt])
+}
+
+model FraudEvent {
+  id             Int      @id @default(autoincrement())
+  clientId       Int
+  trustRequestId Int?
+  eventType      String
+  severity       String   @default("MEDIUM")
+  description    String?
+  status         String   @default("OPEN")
+  createdAt      DateTime @default(now())
+  resolvedAt     DateTime?
+
+  client         Client        @relation(fields: [clientId], references: [id])
+  trustRequest   TrustRequest?  @relation(fields: [trustRequestId], references: [id])
+
+  @@index([clientId])
+  @@index([trustRequestId])
+  @@index([eventType])
+  @@index([createdAt])
 }
