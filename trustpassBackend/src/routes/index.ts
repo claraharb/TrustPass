@@ -1,8 +1,10 @@
 import { Router } from "express";
 import prisma from "../config/prisma";
+import authRoutes from "./auth.routes";
+import { authenticate, AuthenticatedRequest } from "../middleware/auth.middleware";
 
 const router = Router();
-
+router.use("/auth", authRoutes);
 router.get("/health", async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;
@@ -22,6 +24,12 @@ router.get("/health", async (req, res) => {
             database: "disconnected"
         });
     }
+});
+router.get("/client/test", authenticate, (req: AuthenticatedRequest, res) => {
+    res.json({
+        message: "You accessed a protected client route",
+        user: req.user,
+    });
 });
 
 export default router;

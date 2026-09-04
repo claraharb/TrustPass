@@ -1,0 +1,135 @@
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import prisma from "../config/prisma";
+import jwt from "jsonwebtoken";
+
+const registerClientSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const loginClientSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export async function registerClient(req: Request, res: Response) {
+    try {
+        const validation = registerClientSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Validation failed",
+                errors: validation.error.issues,
+            });
+        }
+
+        const { name, email, password } = validation.data;
+
+        const existingClient = await prisma.client.findUnique({
+            where: { email },
+        });
+
+        if (existingClient) {
+            return res.status(409).json({
+                message: "A client with this email already exists",
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        const client = await prisma.client.create({
+            data: {
+                name,
+                email,
+                passwordHash,
+            },
+        });
+
+        return res.status(201).json({
+            message: "Client registered successfully",
+            client: {
+                id: client.id,
+                name: client.name,
+                email: client.email,
+            },
+        });
+    } catch (error) {
+        console.error("Client registration failed:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
+
+export async function loginClient(req: Request, res: Response) {
+    try {
+        const validation = loginClientSchema.safeParse(req.body);
+
+        if (!validation.success) {
+            return res.status(400).json({
+                message: "Validation failed",
+                errors: validation.error.issues,
+            });
+        }
+
+        const { email, password } = validation.data;
+
+        const client = await prisma.client.findUnique({
+            where: { email },
+        });
+
+        if (!client) {
+            return res.status(401).json({
+                message: "Invalid email or password",
+            });
+        }
+
+        if (!client.isActive) {
+            return res.status(403).json({
+                message: "Client account is inactive",
+            });
+        }
+
+        const passwordMatches = await bcrypt.compare(
+            password,
+            client.passwordHash
+        );
+
+        if (!passwordMatches) {
+            return res.status(401).json({
+                message: "Invalid email or password",
+            });
+        }
+        
+         const token = jwt.sign(
+            {
+                clientId: client.id,
+                role: "CLIENT",
+            },
+            process.env.JWT_SECRET!,
+            {
+                expiresIn: "1h",
+            }
+         );
+
+          return res.status(200).json({
+        message: "Client login successful",
+        token,
+        client: {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+        },
+        });
+    } catch (error) {
+        console.error("Client login failed:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+}
