@@ -5,6 +5,7 @@ import adminRoutes from "./admin.routes";
 import packageRoutes from "./package.routes";
 import subscriptionRoutes from "./subscription.routes";
 import apiKeyRoutes from "./apiKey.routes";
+import trustRoutes from "./trust.routes";
 
 import {
   authenticate,
@@ -19,6 +20,7 @@ router.use("/admin", adminRoutes);
 router.use("/packages", packageRoutes);
 router.use("/client/subscriptions", subscriptionRoutes);
 router.use("/client/api-keys", apiKeyRoutes);
+router.use("/trust", trustRoutes);
 
 router.get("/health", async (req, res) => {
   try {
