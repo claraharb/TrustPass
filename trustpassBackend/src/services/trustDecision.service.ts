@@ -181,6 +181,29 @@ export function calculateTrustDecision(
     }
   }
 
+
+
+    if (
+    input.actionRiskLevel === "HIGH" &&
+    hasNegativeOtpBombing
+  ) {
+    const otpBombingSignal =
+      negativeSignals.find(
+        (signal) =>
+          signal.signalType === "OTP_BOMBING"
+      );
+
+    if (
+      otpBombingSignal &&
+      otpBombingSignal.riskScore >= 40
+    ) {
+      /*
+      * Keep the score in the CHALLENGE range.
+      */
+      score = Math.min(score, 59);
+    }
+  }
+
   // =========================================================
   // 7. STRONG FRAUD COMBINATION
   // =========================================================
