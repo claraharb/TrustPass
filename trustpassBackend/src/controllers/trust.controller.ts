@@ -356,9 +356,27 @@ export async function trustCheck(
     // =========================================================
 
     const decisionResult =
-      await calculateTrustDecision(
-        trustRequest.id
-      );
+      calculateTrustDecision({
+        actionRiskLevel:
+          assessment.actionRiskLevel,
+
+        signals:
+          signals.map(
+            (signal) => ({
+              signalType:
+                signal.signalType,
+
+              riskScore:
+                signal.riskScore,
+
+              isPositive:
+                signal.isPositive,
+
+              details:
+                signal.details,
+            })
+          ),
+      });
 
 
     // =========================================================

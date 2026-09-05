@@ -1,39 +1,138 @@
 import "dotenv/config";
-import prisma from "../config/prisma";
-import {
-  calculateTrustDecision,
-  saveTrustDecision,
-} from "../services/trustDecision.service";
 
-async function main() {
-  const trustRequest = await prisma.trustRequest.findFirst({
-    orderBy: {
-      createdAt: "desc",
-    },
+import { calculateTrustDecision } from "../services/trustDecision.service";
+
+function main() {
+  console.log("========================================");
+  console.log("TrustPass Trust Decision Test");
+  console.log("========================================");
+
+  // =========================================================
+  // 1. LEGITIMATE REQUEST
+  // =========================================================
+
+  const legitimate = calculateTrustDecision({
+    actionRiskLevel: "HIGH",
+
+    signals: [
+      {
+        signalType: "SIM_SWAP",
+        riskScore: 10,
+        isPositive: true,
+        details: "No recent SIM swap detected.",
+      },
+      {
+        signalType: "DEVICE_STATUS",
+        riskScore: 10,
+        isPositive: true,
+        details: "Device is reachable.",
+      },
+      {
+        signalType: "DEVICE_SWAP",
+        riskScore: 10,
+        isPositive: true,
+        details: "No recent device swap detected.",
+      },
+      {
+        signalType: "OTP_BOMBING",
+        riskScore: 10,
+        isPositive: true,
+        details: "OTP request frequency appears normal.",
+      },
+    ],
   });
 
-  if (!trustRequest) {
-    throw new Error("No trust request found");
-  }
+  console.log("\n🟢 LEGITIMATE REQUEST");
 
-  console.log("Testing TrustRequest:", trustRequest.requestId);
-
-  const result = await calculateTrustDecision(trustRequest.id);
-
-  console.log("\nCalculated decision:");
-  console.log(JSON.stringify(result, null, 2));
-
-  const savedDecision = await saveTrustDecision(
-    trustRequest.id,
-    result
+  console.log(
+    JSON.stringify(
+      legitimate,
+      null,
+      2
+    )
   );
 
-  console.log("\nSaved TrustDecision:");
-  console.log(JSON.stringify(savedDecision, null, 2));
+  // =========================================================
+  // 2. SUSPICIOUS REQUEST
+  // =========================================================
+
+  const suspicious = calculateTrustDecision({
+    actionRiskLevel: "HIGH",
+
+    signals: [
+      {
+        signalType: "SIM_SWAP",
+        riskScore: 50,
+        isPositive: false,
+        details: "Recent SIM swap detected.",
+      },
+      {
+        signalType: "DEVICE_STATUS",
+        riskScore: 10,
+        isPositive: true,
+        details: "Device is reachable.",
+      },
+    ],
+  });
+
+  console.log("\n🟡 SUSPICIOUS REQUEST");
+
+  console.log(
+    JSON.stringify(
+      suspicious,
+      null,
+      2
+    )
+  );
+
+  // =========================================================
+  // 3. FRAUDULENT REQUEST
+  // =========================================================
+
+  const fraudulent = calculateTrustDecision({
+    actionRiskLevel: "HIGH",
+
+    signals: [
+      {
+        signalType: "SIM_SWAP",
+        riskScore: 80,
+        isPositive: false,
+        details: "Recent SIM swap detected.",
+      },
+      {
+        signalType: "DEVICE_SWAP",
+        riskScore: 75,
+        isPositive: false,
+        details: "Recent device swap detected.",
+      },
+      {
+        signalType: "DEVICE_STATUS",
+        riskScore: 10,
+        isPositive: true,
+        details: "Device is reachable.",
+      },
+      {
+        signalType: "OTP_BOMBING",
+        riskScore: 70,
+        isPositive: false,
+        details: "Repeated OTP requests detected.",
+      },
+    ],
+  });
+
+  console.log("\n🔴 FRAUDULENT REQUEST");
+
+  console.log(
+    JSON.stringify(
+      fraudulent,
+      null,
+      2
+    )
+  );
+
+  console.log("\n========================================");
+  console.log("Test completed.");
+  console.log("========================================");
 }
 
-main()
-  .catch(console.error)
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();

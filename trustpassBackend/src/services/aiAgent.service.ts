@@ -26,203 +26,384 @@ const client = new GoogleGenAI({
   apiKey,
 });
 
+
 /**
- * TrustPass AI Agent
+ * ============================================================
+ * TRUSTPASS AI AGENT
+ * ============================================================
  *
- * The agent analyzes a protected action and decides
- * which network/telecom signals are relevant.
+ * The AI Agent analyzes the transaction and determines
+ * which telecom/network signals should be collected.
+ *
+ * The Agent does NOT directly make the final ALLOW /
+ * CHALLENGE / BLOCK decision.
+ *
+ * Instead:
+ *
+ * Request
+ *    ↓
+ * AI Agent
+ *    ↓
+ * Select relevant evidence
+ *    ↓
+ * CAMARA APIs
+ *    ↓
+ * Trust Engine
+ *    ↓
+ * Final decision
  */
 export async function runTrustAgent(
   input: TrustAgentInput
 ): Promise<TrustAgentDecision> {
+
   const prompt = `
-You are TrustPass AI, an intelligent fraud-prevention agent.
+You are TrustPass AI, an intelligent fraud-prevention
+and telecom-evidence orchestration agent.
 
-Your job is to analyze a digital transaction and determine
-which telecom/network signals should be collected before
-making a trust decision.
+Your responsibility is to analyze a digital transaction
+and decide which available telecom/network signals should
+be collected to assess its trustworthiness.
 
-IMPORTANT:
-- You are an orchestration agent.
-- You decide which available network APIs/signals are useful.
-- Do NOT automatically select every signal.
-- Select only signals relevant to the transaction.
-- Consider both the protected action and behavioral context.
-- Repeated OTP requests can indicate OTP bombing.
-- A recent SIM swap is an important fraud signal.
-- High-risk actions may require stronger evidence.
-- If the available information is insufficient, request additional evidence.
+You are an ORCHESTRATION AGENT.
 
-PROTECTED ACTION:
+You do NOT directly approve or block the transaction.
+
+Your job is to determine what evidence TrustPass should
+collect next.
+
+============================================================
+TRANSACTION INFORMATION
+============================================================
+
+Protected action:
 ${input.action}
 
-ACTION RISK LEVEL:
+Protected action risk level:
 ${input.actionRiskLevel}
 
-PHONE NUMBER:
+Phone number:
 ${input.phoneNumber ?? "Not provided"}
 
-IP ADDRESS:
+IP address:
 ${input.ipAddress ?? "Not provided"}
 
-USER AGENT:
+User agent:
 ${input.userAgent ?? "Not provided"}
 
-RECENT OTP ATTEMPT COUNT:
+Current/reported OTP attempt count:
 ${input.attemptCount ?? "Not provided"}
 
-AVAILABLE NETWORK SIGNALS:
 
-1. NUMBER_VERIFICATION
-   Determines whether the provided phone number can be verified
-   by the network.
+============================================================
+AVAILABLE NETWORK SIGNALS
+============================================================
 
-2. SIM_SWAP
-   Determines whether the SIM associated with the phone number
-   was recently changed.
+NUMBER_VERIFICATION
 
-3. DEVICE_STATUS
-   Provides information about the current device status.
+Verifies whether the phone number can be verified
+through the operator/network.
 
-4. DEVICE_SWAP
-   Determines whether the user recently changed devices.
 
-5. LOCATION_VERIFICATION
-   Verifies whether the user's location is consistent with
-   the expected context.
+SIM_SWAP
 
-DECISION GUIDELINES:
+Checks whether the SIM associated with the phone number
+was recently changed.
 
-- OTP_REQUEST:
-  Consider SIM_SWAP and NUMBER_VERIFICATION.
-  If the OTP request frequency is suspicious, consider additional
-  device/network evidence.
 
-- LOGIN:
-  Consider NUMBER_VERIFICATION and SIM_SWAP when a phone number
-  is available.
-  Consider device evidence for higher-risk situations.
+DEVICE_STATUS
 
-- HIGH risk actions:
-  Prefer stronger evidence than LOW-risk actions.
+Checks whether the device is currently reachable through
+the mobile network.
 
-- LOW risk actions:
-  Avoid unnecessary network API calls.
 
-- If repeated OTP attempts are detected, treat this as an
-  important behavioral risk indicator.
+DEVICE_SWAP
 
-- Do not claim that a network API detected fraud before it
-  has actually been called.
+Checks whether the phone number/SIM was recently associated
+with another device.
 
-- The selected signals represent APIs that TrustPass should
-  call next.
+
+LOCATION_VERIFICATION
+
+Checks whether the user's network location is consistent
+with the expected context.
+
+
+============================================================
+AGENT DECISION RULES
+============================================================
+
+1. OTP_REQUEST
+
+OTP requests are sensitive because attackers may abuse
+OTP systems through repeated requests.
+
+Consider:
+
+- NUMBER_VERIFICATION
+- SIM_SWAP
+
+If OTP activity is suspicious or the action is high risk,
+consider stronger device evidence such as:
+
+- DEVICE_STATUS
+- DEVICE_SWAP
+
+
+2. LOGIN
+
+For login requests:
+
+- Consider NUMBER_VERIFICATION when a phone number exists.
+- Consider SIM_SWAP when a phone number exists.
+- Consider device evidence for higher-risk situations.
+
+
+3. HIGH-RISK ACTIONS
+
+High-risk actions should generally receive stronger
+telecom evidence than low-risk actions.
+
+
+4. LOW-RISK ACTIONS
+
+Avoid unnecessary network API calls.
+
+Only select signals that materially help the assessment.
+
+
+5. OTP BOMBING
+
+Repeated OTP attempts increase fraud risk.
+
+A high number of attempts should make the agent consider
+additional evidence.
+
+
+6. EVIDENCE SELECTION
+
+Do NOT automatically select every available signal.
+
+Choose only the signals that are relevant to this
+specific transaction.
+
+
+7. ADDITIONAL EVIDENCE
+
+Set:
+
+additionalEvidenceNeeded = true
+
+when:
+
+- suspicious behavior exists,
+- the transaction has high risk,
+- available evidence is insufficient,
+- signals conflict,
+- or additional network evidence would materially
+  improve confidence.
+
+Set:
+
+additionalEvidenceNeeded = false
+
+only when the currently available information is
+sufficient for the current stage of assessment.
+
+
+8. CONSISTENCY
+
+If you select multiple network signals because the
+transaction requires additional investigation,
+additionalEvidenceNeeded should normally be true.
+
+Never say that additional evidence is required while
+returning additionalEvidenceNeeded=false.
+
+Do not claim that a network API has detected fraud.
+
+You are selecting APIs that TrustPass should call NEXT.
+
+
+============================================================
+OUTPUT FORMAT
+============================================================
 
 Return ONLY valid JSON.
 
 Do not use markdown.
-Do not wrap the JSON in \`\`\`.
-Do not add text before or after the JSON.
 
-Return exactly this structure:
+Do not wrap the JSON in a code block.
+
+Do not include text before or after the JSON.
+
+Return exactly:
 
 {
-  "riskAssessment": "LOW",
-  "selectedSignals": [],
-  "additionalEvidenceNeeded": false,
+  "riskAssessment": "HIGH",
+  "selectedSignals": [
+    "SIM_SWAP"
+  ],
+  "additionalEvidenceNeeded": true,
   "reason": "Short explanation"
 }
 
 Allowed riskAssessment values:
+
 LOW
 MEDIUM
 HIGH
 
-Allowed selectedSignals values:
+Allowed selectedSignals:
+
 NUMBER_VERIFICATION
 SIM_SWAP
 DEVICE_STATUS
 DEVICE_SWAP
 LOCATION_VERIFICATION
 
-additionalEvidenceNeeded must be either true or false.
+additionalEvidenceNeeded:
+
+true
+false
 `;
 
+
   try {
-    console.log("🤖 TrustPass AI Agent analyzing request...");
 
-    const interaction = await client.interactions.create({
-      model: "gemini-3.6-flash",
-      input: prompt,
-    });
-
-    const text = interaction.output_text?.trim();
-
-    if (!text) {
-      throw new Error("AI Agent returned an empty response");
-    }
-
-    console.log("🤖 AI Agent raw response:");
-    console.log(text);
-
-    const cleanedText = cleanJsonResponse(text);
-
-    const parsed = JSON.parse(
-      cleanedText
-    ) as TrustAgentDecision;
-
-    validateAgentDecision(parsed);
-
-    console.log("🤖 AI Agent decision:");
     console.log(
-      JSON.stringify(parsed, null, 2)
+      "🤖 TrustPass AI Agent analyzing request..."
     );
 
+
+    const interaction =
+      await client.interactions.create({
+
+        model:
+          "gemini-3.6-flash",
+
+        input:
+          prompt,
+      });
+
+
+    const text =
+      interaction.output_text?.trim();
+
+
+    if (!text) {
+      throw new Error(
+        "AI Agent returned an empty response"
+      );
+    }
+
+
+    console.log(
+      "🤖 AI Agent raw response:"
+    );
+
+    console.log(text);
+
+
+    const cleanedText =
+      cleanJsonResponse(text);
+
+
+    const parsed =
+      JSON.parse(
+        cleanedText
+      ) as TrustAgentDecision;
+
+
+    validateAgentDecision(
+      parsed
+    );
+
+
+    console.log(
+      "🤖 AI Agent decision:"
+    );
+
+    console.log(
+      JSON.stringify(
+        parsed,
+        null,
+        2
+      )
+    );
+
+
     return parsed;
+
   } catch (error) {
+
     console.error(
       "TrustPass AI Agent failed:",
       error
     );
 
+
     /*
-     * If Gemini is unavailable, TrustPass continues
-     * using a deterministic fallback.
-     *
-     * This prevents the fraud-protection API from
-     * completely failing because of an AI/API outage.
+     * If Gemini is unavailable, TrustPass
+     * continues using deterministic fallback
+     * logic.
      */
-    return fallbackAgentDecision(input);
+
+    return fallbackAgentDecision(
+      input
+    );
   }
 }
 
+
 /**
- * Remove markdown formatting if the model
- * accidentally returns a JSON code block.
+ * ============================================================
+ * CLEAN GEMINI RESPONSE
+ * ============================================================
+ *
+ * Removes accidental markdown code fences.
  */
 function cleanJsonResponse(
   text: string
 ): string {
+
   return text
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
+
+    .replace(
+      /^```json\s*/i,
+      ""
+    )
+
+    .replace(
+      /^```\s*/i,
+      ""
+    )
+
+    .replace(
+      /```\s*$/i,
+      ""
+    )
+
     .trim();
 }
 
+
 /**
- * Validate the structure returned by Gemini.
+ * ============================================================
+ * VALIDATE AI RESPONSE
+ * ============================================================
  *
- * We never blindly trust an LLM response.
+ * Never blindly trust an LLM response.
  */
 function validateAgentDecision(
   decision: TrustAgentDecision
 ): void {
+
   const validRiskLevels = [
     "LOW",
     "MEDIUM",
     "HIGH",
   ];
+
 
   const validSignals = [
     "NUMBER_VERIFICATION",
@@ -232,133 +413,197 @@ function validateAgentDecision(
     "LOCATION_VERIFICATION",
   ];
 
+
   if (
     !validRiskLevels.includes(
       decision.riskAssessment
     )
   ) {
+
     throw new Error(
       "AI Agent returned an invalid risk assessment"
     );
   }
+
 
   if (
     !Array.isArray(
       decision.selectedSignals
     )
   ) {
+
     throw new Error(
       "AI Agent returned invalid selectedSignals"
     );
   }
 
-  for (const signal of decision.selectedSignals) {
-    if (!validSignals.includes(signal)) {
+
+  for (
+    const signal
+    of decision.selectedSignals
+  ) {
+
+    if (
+      !validSignals.includes(
+        signal
+      )
+    ) {
+
       throw new Error(
         `AI Agent returned invalid signal: ${signal}`
       );
     }
   }
 
+
   if (
     typeof decision.additionalEvidenceNeeded !==
     "boolean"
   ) {
+
     throw new Error(
       "AI Agent returned invalid additionalEvidenceNeeded"
     );
   }
 
+
   if (
-    typeof decision.reason !== "string" ||
-    decision.reason.trim().length === 0
+    typeof decision.reason !==
+    "string" ||
+    decision.reason.trim()
+      .length === 0
   ) {
+
     throw new Error(
       "AI Agent returned invalid reason"
     );
   }
 }
 
+
 /**
- * Deterministic fallback.
+ * ============================================================
+ * FALLBACK AI LOGIC
+ * ============================================================
  *
- * Used when Gemini is unavailable, rate-limited,
- * returns invalid JSON, or another AI error occurs.
+ * Used when Gemini is unavailable,
+ * rate-limited, or returns invalid data.
  */
 function fallbackAgentDecision(
   input: TrustAgentInput
 ): TrustAgentDecision {
+
   console.log(
     "⚠️ Using TrustPass AI fallback logic"
   );
 
-  /*
-   * OTP requests are one of our most important
-   * TrustPass demo scenarios.
-   */
-  if (input.action === "OTP_REQUEST") {
+
+  // ==========================================================
+  // OTP REQUEST
+  // ==========================================================
+
+  if (
+    input.action ===
+    "OTP_REQUEST"
+  ) {
+
     const suspiciousOtpActivity =
-      input.attemptCount !== undefined &&
+      input.attemptCount !==
+      undefined &&
       input.attemptCount >= 5;
 
+
     return {
+
       riskAssessment:
         suspiciousOtpActivity
           ? "HIGH"
           : input.actionRiskLevel,
+
 
       selectedSignals: [
         "SIM_SWAP",
         "NUMBER_VERIFICATION",
       ],
 
-      additionalEvidenceNeeded:
-        suspiciousOtpActivity,
 
-      reason: suspiciousOtpActivity
-        ? "AI service unavailable. Repeated OTP requests require stronger telecom verification."
-        : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
+      additionalEvidenceNeeded:
+        suspiciousOtpActivity ||
+        input.actionRiskLevel ===
+        "HIGH",
+
+
+      reason:
+        suspiciousOtpActivity
+
+          ? "AI service unavailable. Repeated OTP requests require stronger telecom verification."
+
+          : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
     };
   }
 
-  /*
-   * LOGIN fallback.
-   */
-  if (input.action === "LOGIN") {
+
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
+
+  if (
+    input.action ===
+    "LOGIN"
+  ) {
+
     return {
+
       riskAssessment:
         input.actionRiskLevel,
 
+
       selectedSignals:
         input.phoneNumber
+
           ? [
-              "NUMBER_VERIFICATION",
-              "SIM_SWAP",
-            ]
+            "NUMBER_VERIFICATION",
+            "SIM_SWAP",
+          ]
+
           : [],
 
+
       additionalEvidenceNeeded:
-        input.actionRiskLevel === "HIGH",
+        input.actionRiskLevel ===
+        "HIGH",
+
 
       reason:
-        "AI service unavailable. TrustPass selected basic authentication-related telecom evidence.",
+        "AI service unavailable. TrustPass selected authentication-related telecom evidence.",
     };
   }
 
-  /*
-   * Generic fallback for other protected actions.
-   */
+
+  // ==========================================================
+  // GENERIC FALLBACK
+  // ==========================================================
+
   return {
+
     riskAssessment:
       input.actionRiskLevel,
 
+
     selectedSignals:
       input.phoneNumber
-        ? ["NUMBER_VERIFICATION"]
+
+        ? [
+          "NUMBER_VERIFICATION",
+        ]
+
         : [],
 
+
     additionalEvidenceNeeded:
-      input.actionRiskLevel === "HIGH",
+      input.actionRiskLevel ===
+      "HIGH",
+
 
     reason:
       "AI service unavailable. TrustPass selected conservative fallback evidence.",

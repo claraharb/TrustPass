@@ -2,6 +2,8 @@ import prisma from "../config/prisma";
 
 import {
   checkSimSwap,
+  checkDeviceSwap,
+  checkDeviceReachability,
 } from "./camara.service";
 
 
@@ -25,14 +27,9 @@ interface NetworkSignal {
  * ============================================================
  * SIM SWAP
  * ============================================================
- *
- * Calls Nokia Network as Code / CAMARA SIM Swap API.
- *
- * This is currently our first real telecom signal.
  */
 export async function collectSimSwapSignal(
   trustRequestId: number,
-
   phoneNumber: string
 ): Promise<NetworkSignal> {
 
@@ -44,7 +41,6 @@ export async function collectSimSwapSignal(
   const result =
     await checkSimSwap(
       phoneNumber,
-
       240
     );
 
@@ -64,23 +60,13 @@ export async function collectSimSwapSignal(
       "NOKIA_CAMARA",
 
     value:
-      String(
-        result.swapped
-      ),
+      String(result.swapped),
 
-    /*
-     * Higher risk when a recent
-     * SIM swap is detected.
-     */
     riskScore:
       result.swapped
         ? 80
         : 10,
 
-    /*
-     * A non-swapped SIM is positive.
-     * A recently swapped SIM is negative.
-     */
     isPositive:
       !result.swapped,
 
@@ -93,11 +79,171 @@ export async function collectSimSwapSignal(
   };
 
 
-  // ==========================================================
-  // Save network signal to database
-  // ==========================================================
+  await saveRiskSignal(
+    trustRequestId,
+    signal
+  );
 
-  await prisma.riskSignal.create({
+
+  return signal;
+}
+
+
+/**
+ * ============================================================
+ * DEVICE SWAP
+ * ============================================================
+ */
+export async function collectDeviceSwapSignal(
+  trustRequestId: number,
+  phoneNumber: string
+): Promise<NetworkSignal> {
+
+  console.log(
+    `📡 Checking Device Swap for ${phoneNumber}`
+  );
+
+
+  const result =
+    await checkDeviceSwap(
+      phoneNumber,
+      240
+    );
+
+
+  console.log(
+    "📡 Device Swap result:",
+    result
+  );
+
+
+  const signal: NetworkSignal = {
+
+    signalType:
+      "DEVICE_SWAP",
+
+    source:
+      "NOKIA_CAMARA",
+
+    value:
+      String(result.swapped),
+
+    riskScore:
+      result.swapped
+        ? 75
+        : 10,
+
+    isPositive:
+      !result.swapped,
+
+    details:
+      result.swapped
+
+        ? "A recent device swap was detected for this phone number."
+
+        : "No recent device swap was detected for this phone number.",
+  };
+
+
+  await saveRiskSignal(
+    trustRequestId,
+    signal
+  );
+
+
+  return signal;
+}
+
+
+/**
+ * ============================================================
+ * DEVICE STATUS / REACHABILITY
+ * ============================================================
+ */
+export async function collectDeviceStatusSignal(
+  trustRequestId: number,
+  phoneNumber: string
+): Promise<NetworkSignal> {
+
+  console.log(
+    `📡 Checking Device Status for ${phoneNumber}`
+  );
+
+
+  const result =
+    await checkDeviceReachability(
+      phoneNumber
+    );
+
+
+  console.log(
+    "📡 Device Status result:",
+    result
+  );
+
+
+  const connectivity =
+    result.connectivity &&
+    result.connectivity.length > 0
+
+      ? result.connectivity.join(", ")
+
+      : "NONE";
+
+
+  const signal: NetworkSignal = {
+
+    signalType:
+      "DEVICE_STATUS",
+
+    source:
+      "NOKIA_CAMARA",
+
+    value:
+      String(result.reachable),
+
+    /*
+     * A reachable device is positive.
+     * An unreachable device increases risk.
+     */
+    riskScore:
+      result.reachable
+        ? 10
+        : 60,
+
+    isPositive:
+      result.reachable,
+
+    details:
+      result.reachable
+
+        ? `Device is reachable through the network (${connectivity}).`
+
+        : "Device is currently not reachable through the mobile network.",
+  };
+
+
+  await saveRiskSignal(
+    trustRequestId,
+    signal
+  );
+
+
+  return signal;
+}
+
+
+/**
+ * ============================================================
+ * SAVE RISK SIGNAL
+ * ============================================================
+ */
+async function saveRiskSignal(
+  trustRequestId: number,
+  signal: NetworkSignal
+) {
+
+  return prisma.riskSignal.create({
 
     data: {
 
@@ -122,9 +268,6 @@ export async function collectSimSwapSignal(
         signal.details,
     },
   });
-
-
-  return signal;
 }
 
 
@@ -132,27 +275,6 @@ export async function collectSimSwapSignal(
  * ============================================================
  * AI-SELECTED EVIDENCE ORCHESTRATOR
  * ============================================================
- *
- * The AI Agent gives us something like:
- *
- * [
- *   "NUMBER_VERIFICATION",
- *   "SIM_SWAP",
- *   "DEVICE_STATUS"
- * ]
- *
- * This function decides which actual network APIs
- * to execute.
- *
- * The important architectural idea is:
- *
- * AI Agent
- *     ↓
- * selectedSignals
- *     ↓
- * networkSignal.service
- *     ↓
- * CAMARA APIs
  */
 export async function collectSelectedEvidence(
 
@@ -164,7 +286,8 @@ export async function collectSelectedEvidence(
 
 ): Promise<NetworkSignal[]> {
 
-  const signals: NetworkSignal[] = [];
+  const signals:
+    NetworkSignal[] = [];
 
 
   console.log(
@@ -185,12 +308,19 @@ export async function collectSelectedEvidence(
   );
 
 
-  // ==========================================================
-  // Execute each signal selected by the AI
-  // ==========================================================
+  if (!phoneNumber) {
+
+    console.log(
+      "⚠️ No phone number provided. Network APIs requiring a phone number will be skipped."
+    );
+
+    return signals;
+  }
+
 
   for (
-    const signalType of selectedSignals
+    const signalType
+    of selectedSignals
   ) {
 
     switch (signalType) {
@@ -207,14 +337,16 @@ export async function collectSelectedEvidence(
         );
 
         /*
-         * CAMARA Number Verification requires
-         * an OAuth / consent flow.
+         * Number Verification requires its
+         * appropriate consent / authorization flow.
          *
-         * We will integrate the real API separately.
+         * We will integrate this separately instead
+         * of pretending that an API-key-only call
+         * verifies the user's number.
          */
 
         console.log(
-          "⚠️ NUMBER_VERIFICATION is not connected yet"
+          "⚠️ NUMBER_VERIFICATION requires the CAMARA authorization flow and is not executed yet."
         );
 
         break;
@@ -230,44 +362,23 @@ export async function collectSelectedEvidence(
           "📡 AI selected SIM_SWAP"
         );
 
-
-        if (!phoneNumber) {
-
-          console.log(
-            "⚠️ SIM_SWAP skipped: phone number not provided"
-          );
-
-          break;
-        }
-
-
         try {
 
           const signal =
             await collectSimSwapSignal(
               trustRequestId,
-
               phoneNumber
             );
-
 
           signals.push(signal);
 
         } catch (error) {
 
           console.error(
-            "❌ SIM_SWAP API failed:",
+            "❌ SIM_SWAP failed:",
             error
           );
 
-          /*
-           * We don't crash the entire TrustPass
-           * request because one external API failed.
-           */
-
-          console.log(
-            "⚠️ Continuing without SIM_SWAP signal"
-          );
         }
 
         break;
@@ -283,14 +394,24 @@ export async function collectSelectedEvidence(
           "📡 AI selected DEVICE_STATUS"
         );
 
-        /*
-         * Real CAMARA Device Status integration
-         * will be added next.
-         */
+        try {
 
-        console.log(
-          "⚠️ DEVICE_STATUS is not connected yet"
-        );
+          const signal =
+            await collectDeviceStatusSignal(
+              trustRequestId,
+              phoneNumber
+            );
+
+          signals.push(signal);
+
+        } catch (error) {
+
+          console.error(
+            "❌ DEVICE_STATUS failed:",
+            error
+          );
+
+        }
 
         break;
 
@@ -305,14 +426,24 @@ export async function collectSelectedEvidence(
           "📡 AI selected DEVICE_SWAP"
         );
 
-        /*
-         * Real CAMARA Device Swap integration
-         * will be added next.
-         */
+        try {
 
-        console.log(
-          "⚠️ DEVICE_SWAP is not connected yet"
-        );
+          const signal =
+            await collectDeviceSwapSignal(
+              trustRequestId,
+              phoneNumber
+            );
+
+          signals.push(signal);
+
+        } catch (error) {
+
+          console.error(
+            "❌ DEVICE_SWAP failed:",
+            error
+          );
+
+        }
 
         break;
 
@@ -327,20 +458,15 @@ export async function collectSelectedEvidence(
           "📡 AI selected LOCATION_VERIFICATION"
         );
 
-        /*
-         * Real CAMARA Location Verification integration
-         * will be added later.
-         */
-
         console.log(
-          "⚠️ LOCATION_VERIFICATION is not connected yet"
+          "⚠️ LOCATION_VERIFICATION is not connected yet."
         );
 
         break;
 
 
       // ======================================================
-      // UNKNOWN SIGNAL
+      // UNKNOWN
       // ======================================================
 
       default:
@@ -359,8 +485,15 @@ export async function collectSelectedEvidence(
   );
 
   console.log(
-    "📡 Collected network signals:",
-    signals
+    "📡 Collected network signals:"
+  );
+
+  console.log(
+    JSON.stringify(
+      signals,
+      null,
+      2
+    )
   );
 
   console.log(
