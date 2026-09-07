@@ -1,8 +1,23 @@
 import type { AdminDashboardMetrics, AdminUser } from "../types/admin";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const ADMIN_TOKEN_KEY = "trustpass_admin_token";
+const ADMIN_SESSION_KEY = "trustpass_admin_session";
 
-const getToken = () => localStorage.getItem("trustpass_admin_token");
+const getToken = () => localStorage.getItem(ADMIN_TOKEN_KEY);
+
+export function getStoredAdmin(): AdminUser | null {
+  const serializedAdmin = localStorage.getItem(ADMIN_SESSION_KEY);
+
+  if (!serializedAdmin) return null;
+
+  try {
+    return JSON.parse(serializedAdmin) as AdminUser;
+  } catch {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    return null;
+  }
+}
 
 async function request<T>(path: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers);
@@ -13,6 +28,12 @@ async function request<T>(path: string, options: RequestInit = {}) {
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
+    if (response.status === 401 && getToken()) {
+      localStorage.removeItem(ADMIN_TOKEN_KEY);
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      window.dispatchEvent(new Event("trustpass:unauthorized"));
+    }
+
     const body = await response.json().catch(() => null);
     throw new Error(
       body?.message || `Request failed with status ${response.status}`,
@@ -39,12 +60,17 @@ export async function loginAdmin(email: string, password: string) {
       body: JSON.stringify({ email, password }),
     },
   );
-  localStorage.setItem("trustpass_admin_token", response.token);
-  return response.admin;
+  const admin = { ...response.admin, role: "ADMIN" as const };
+  localStorage.setItem(ADMIN_TOKEN_KEY, response.token);
+  localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(admin));
+  window.dispatchEvent(new Event("trustpass:session-changed"));
+  return admin;
 }
 
 export function logoutAdmin() {
-  localStorage.removeItem("trustpass_admin_token");
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  window.dispatchEvent(new Event("trustpass:session-changed"));
 }
 
 export function getAdminDashboard(range: "7d" | "30d" | "90d") {
