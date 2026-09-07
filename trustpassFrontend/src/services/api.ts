@@ -116,3 +116,9 @@ export function setAdminClientStatus(clientId: number, isActive: boolean) {
     { method: "PATCH" },
   );
 }
+
+export function deleteAdminClient(clientId: number) {
+  return request<{ message: string }>(`/admin/clients/${clientId}`, {
+    method: "DELETE",
+  });
+}

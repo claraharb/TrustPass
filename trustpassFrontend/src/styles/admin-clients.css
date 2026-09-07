@@ -38,6 +38,7 @@
 .clients-actions-heading { text-align: right; }.client-row-actions { display: flex; justify-content: flex-end; gap: 4px; }
 .client-row-actions button, .clients-close-btn { display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
 .client-row-actions button { width: 28px; height: 28px; }.client-row-actions button:hover, .clients-close-btn:hover { background: var(--teal-light); color: var(--teal-hover); }.client-row-actions button:disabled { opacity: .4; cursor: wait; }
+.client-row-actions button.client-delete-action:hover { background: var(--red-light); color: var(--red); }
 .clients-empty-state { display: grid; justify-items: center; gap: 8px; padding: 64px 20px; color: var(--muted); text-align: center; }.clients-empty-state h3 { margin: 4px 0 0; color: var(--ink); font-size: 15px; }.clients-empty-state p { margin: 0 0 8px; font-size: 12px; }
 .clients-modal-backdrop, .clients-drawer-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(1, 20, 36, .36); }
 .clients-modal-backdrop { display: grid; place-items: center; padding: 20px; }.clients-modal { width: min(100%, 440px); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-lg); }

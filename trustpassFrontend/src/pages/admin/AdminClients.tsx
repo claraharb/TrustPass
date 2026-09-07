@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Eye, Mail, Pencil, Plus, RefreshCw, UserCheck, UserX, X } from 'lucide-react';
+import { Eye, Mail, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserX, X } from 'lucide-react';
 import {
   createAdminClient,
+  deleteAdminClient,
   getAdminClientDetails,
   getAdminClients,
   setAdminClientStatus,
@@ -44,6 +45,7 @@ export function AdminClients() {
   const [form, setForm] = useState<ClientForm>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [busyClientId, setBusyClientId] = useState<number | null>(null);
+  const [deletingClientId, setDeletingClientId] = useState<number | null>(null);
 
   const loadClients = async (showRefreshState = false) => {
     if (showRefreshState) setIsRefreshing(true);
@@ -159,6 +161,26 @@ export function AdminClients() {
     }
   };
 
+  const handleDelete = async (client: Client) => {
+    const confirmed = window.confirm(
+      `Delete ${client.name}? This permanently removes the client and related subscriptions, API keys, trust history, and usage records.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingClientId(client.id);
+    try {
+      await deleteAdminClient(client.id);
+      setClients((current) => current.filter((item) => item.id !== client.id));
+      setSelectedClient((current) => current?.id === client.id ? null : current);
+      setError(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete client');
+    } finally {
+      setDeletingClientId(null);
+    }
+  };
+
   if (isLoading) {
     return <div className="dashboard-content clients-page-state">Loading clients...</div>;
   }
@@ -220,7 +242,8 @@ export function AdminClients() {
                       <div className="client-row-actions">
                         <button type="button" title="View client details" aria-label={`View ${client.name} details`} onClick={() => void handleViewDetails(client.id)}><Eye size={15} /></button>
                         <button type="button" title="Edit client" aria-label={`Edit ${client.name}`} onClick={() => openEditModal(client)}><Pencil size={15} /></button>
-                        <button type="button" title={client.isActive ? 'Deactivate client' : 'Activate client'} aria-label={`${client.isActive ? 'Deactivate' : 'Activate'} ${client.name}`} disabled={busyClientId === client.id} onClick={() => void handleStatusChange(client)}>{client.isActive ? <UserX size={15} /> : <UserCheck size={15} />}</button>
+                        <button type="button" title={client.isActive ? 'Deactivate client' : 'Activate client'} aria-label={`${client.isActive ? 'Deactivate' : 'Activate'} ${client.name}`} disabled={busyClientId === client.id || deletingClientId === client.id} onClick={() => void handleStatusChange(client)}>{client.isActive ? <UserX size={15} /> : <UserCheck size={15} />}</button>
+                        <button type="button" className="client-delete-action" title="Delete client" aria-label={`Delete ${client.name}`} disabled={busyClientId === client.id || deletingClientId === client.id} onClick={() => void handleDelete(client)}><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
