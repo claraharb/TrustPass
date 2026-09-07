@@ -1,4 +1,5 @@
 import type { AdminDashboardMetrics, AdminUser } from "../types/admin";
+import type { Client, ClientDetails } from "../types/client";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const ADMIN_TOKEN_KEY = "trustpass_admin_token";
@@ -75,4 +76,43 @@ export function logoutAdmin() {
 
 export function getAdminDashboard(range: "7d" | "30d" | "90d") {
   return request<AdminDashboardMetrics>(`/admin/dashboard?range=${range}`);
+}
+
+export function getAdminClients() {
+  return request<{ clients: Client[] }>("/admin/clients");
+}
+
+export function getAdminClientDetails(clientId: number) {
+  return request<{ client: ClientDetails }>(`/admin/clients/${clientId}`);
+}
+
+export function createAdminClient(input: {
+  name: string;
+  email: string;
+  password: string;
+}) {
+  return request<{ message: string; client: Client }>("/admin/clients", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateAdminClient(
+  clientId: number,
+  input: { name?: string; email?: string; password?: string },
+) {
+  return request<{ message: string; client: Client }>(
+    `/admin/clients/${clientId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function setAdminClientStatus(clientId: number, isActive: boolean) {
+  return request<{ message: string; client: Client }>(
+    `/admin/clients/${clientId}/${isActive ? "activate" : "deactivate"}`,
+    { method: "PATCH" },
+  );
 }

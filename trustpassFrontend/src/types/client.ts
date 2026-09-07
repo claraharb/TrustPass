@@ -4,6 +4,38 @@ export interface Client {
   email: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ClientSubscription {
+  id: number;
+  startDate: string;
+  endDate: string;
+  requestsUsed: number;
+  isActive: boolean;
+  paymentStatus: string;
+  package: {
+    id: number;
+    name: string;
+    requestLimit: number;
+    price: number | string;
+    durationDays: number;
+    features: string;
+  };
+}
+
+export interface ClientUsageRecord {
+  id: number;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  requestId?: string | null;
+  createdAt: string;
+}
+
+export interface ClientDetails extends Client {
+  subscriptions: ClientSubscription[];
+  apiUsage: ClientUsageRecord[];
 }
 
 export interface Package {
@@ -34,7 +66,7 @@ export interface ApiKey {
   id: number;
   clientId: number;
   keyPrefix: string;
-  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  status: "ACTIVE" | "REVOKED" | "EXPIRED";
   createdAt: string;
   lastUsedAt?: string;
   usageCount: number;

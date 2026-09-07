@@ -3,6 +3,7 @@ import { AdminLayout } from "../layouts/AdminLayout";
 import { AdminDashboard } from "../pages/admin/AdminDashboard";
 import { AdminLogin } from "../pages/admin/AdminLogin";
 import { BlankPage } from "../pages/admin/BlankPage";
+import { AdminClients } from "../pages/admin/AdminClients";
 import {
   RedirectAuthenticatedAdmin,
   RequireAdminSession,
@@ -19,7 +20,7 @@ export default function AppRoutes() {
       <Route element={<RequireAdminSession />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="clients" element={<BlankPage />} />
+          <Route path="clients" element={<AdminClients />} />
           <Route path="packages" element={<BlankPage />} />
           <Route path="subscriptions" element={<BlankPage />} />
           <Route path="apis" element={<BlankPage />} />
