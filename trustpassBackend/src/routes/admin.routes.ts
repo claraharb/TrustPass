@@ -11,6 +11,7 @@ import {
     updateClient,
     activateClient,
     deactivateClient,
+    deleteClient,
     getClientDetails,
     createPackage,
     updatePackage,
@@ -67,6 +68,13 @@ router.patch(
     authenticate,
     authorize("ADMIN"),
     deactivateClient
+);
+
+router.delete(
+    "/clients/:id",
+    authenticate,
+    authorize("ADMIN"),
+    deleteClient
 );
 
 router.post(

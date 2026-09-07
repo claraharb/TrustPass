@@ -14,7 +14,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import trustpassLogo from '../../assets/brand/trustpass-logo.svg';
-import { logoutAdmin } from '../../services/api';
+import { useAuth } from '../../auth/useAuth';
 
 interface NavItem {
   name: string;
@@ -77,6 +77,7 @@ const NAV_SECTIONS: NavSection[] = [
 export const AdminSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { admin, signOut } = useAuth();
 
   const isItemActive = (path: string) => {
     if (path === '/admin') {
@@ -137,14 +138,14 @@ export const AdminSidebar: React.FC = () => {
       <div className="sidebar-footer">
         <div className="admin-profile-card">
           <div className="avatar-wrapper">
-            <div className="admin-avatar">A</div>
+            <div className="admin-avatar">{admin?.name.charAt(0).toUpperCase() ?? 'A'}</div>
             <span className="online-indicator" title="Admin Session Active" />
           </div>
           <div className="admin-user-info">
             <div className="admin-name-row">
-              <b>TrustPass admin</b>
+              <b>{admin?.name ?? 'TrustPass admin'}</b>
             </div>
-            <span className="admin-role-pill">Super admin</span>
+            <span className="admin-role-pill">{admin?.role === 'ADMIN' ? 'Admin' : 'Unknown role'}</span>
           </div>
           <button
             type="button"
@@ -152,7 +153,7 @@ export const AdminSidebar: React.FC = () => {
             title="Log Out"
             aria-label="Log Out"
             onClick={() => {
-              logoutAdmin();
+              signOut();
               navigate('/admin/login');
             }}
           >
