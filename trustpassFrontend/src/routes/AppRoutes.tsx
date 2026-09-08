@@ -6,8 +6,16 @@ import { BlankPage } from "../pages/admin/BlankPage";
 import { AdminClients } from "../pages/admin/AdminClients";
 import {
   RedirectAuthenticatedAdmin,
+  RedirectAuthenticatedClient,
   RequireAdminSession,
+  RequireClientSession,
 } from "./AdminRouteGuards";
+import { ClientLogin } from "../pages/client/ClientLogin";
+import { ClientSignup } from "../pages/client/ClientSignup";
+import { ClientLayout } from "../layouts/ClientLayout";
+import { ClientHome } from "../pages/client/ClientHome";
+import { ClientApiKeys } from "../pages/client/ClientApiKeys";
+import { ClientAccount } from "../pages/client/ClientAccount";
 
 export default function AppRoutes() {
   return (
@@ -29,6 +37,19 @@ export default function AppRoutes() {
           <Route path="ai-policies" element={<BlankPage />} />
           <Route path="transactions" element={<BlankPage />} />
           <Route path="reports" element={<BlankPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<RedirectAuthenticatedClient />}>
+        <Route path="/client/login" element={<ClientLogin />} />
+        <Route path="/client/signup" element={<ClientSignup />} />
+      </Route>
+
+      <Route element={<RequireClientSession />}>
+        <Route path="/client" element={<ClientLayout />}>
+          <Route index element={<ClientHome />} />
+          <Route path="api-keys" element={<ClientApiKeys />} />
+          <Route path="account" element={<ClientAccount />} />
         </Route>
       </Route>
 

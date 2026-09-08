@@ -314,10 +314,10 @@
 }
 
 .admin-login-kicker {
-  margin: 16px 0 0;
+  margin: 22px 0 0;
   color: #92A8B5;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 800;
   letter-spacing: 0.02em;
 }
 
@@ -500,6 +500,83 @@
   margin: 24px 0 0;
   color: var(--muted-subtle);
   font-size: 11px;
+}
+
+.admin-login-security a {
+  color: var(--teal-hover);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.client-login-page .admin-login-aside {
+  background-color: #e8f1f2;
+  background-image: linear-gradient(rgba(2, 30, 54, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(2, 30, 54, 0.055) 1px, transparent 1px);
+}
+
+.client-login-page .client-login-logo {
+  display: block;
+  height: auto;
+}
+
+.client-login-page .client-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+
+.client-login-page .client-brand-divider {
+  width: 1px;
+  height: 34px;
+  background: rgba(2, 30, 54, 0.35);
+}
+
+.client-login-page .client-brand-label {
+  max-width: none;
+  color: var(--navy);
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.client-login-page .admin-login-kicker,
+.client-login-page .admin-login-eyebrow,
+.client-login-page .admin-login-aside-footer,
+.client-login-page .admin-login-footer-separator {
+  color: var(--navy);
+}
+
+.client-login-page .admin-login-kicker {
+  margin-top: 22px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.client-login-page .admin-login-aside-copy p {
+  color: rgba(2, 30, 54, 0.72);
+}
+
+.client-login-page .admin-login-aside-copy h1 {
+  color: #111111;
+}
+
+.client-login-page .admin-login-status-dot {
+  background-color: var(--teal);
+}
+
+.client-login-page .admin-login-icon {
+  background: rgba(2, 178, 157, 0.14);
+  color: var(--navy);
+}
+
+.client-login-page .admin-login-form > button {
+  background: var(--navy);
+}
+
+.client-login-page .admin-login-form > button:hover {
+  background: var(--navy-hover);
 }
 
 .admin-main {

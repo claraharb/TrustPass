@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AdminUser } from '../types/admin';
-import { getStoredAdmin, logoutAdmin } from '../services/api';
+import { getStoredAdmin, getStoredClient, logoutAdmin, logoutClient } from '../services/api';
 import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(() => getStoredAdmin());
+  const [client, setClient] = useState(() => getStoredClient());
 
   useEffect(() => {
-    const syncSession = () => setAdmin(getStoredAdmin());
+    const syncSession = () => {
+      setAdmin(getStoredAdmin());
+      setClient(getStoredClient());
+    };
     const handleUnauthorized = () => {
-      logoutAdmin();
+      if (window.location.pathname.startsWith('/client')) {
+        logoutClient();
+      } else {
+        logoutAdmin();
+      }
       syncSession();
     };
 
@@ -30,8 +38,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAdmin(null);
   };
 
+  const signOutClient = () => {
+    logoutClient();
+    setClient(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ admin, isAuthenticated: admin !== null, signOut }}>
+    <AuthContext.Provider
+      value={{
+        admin,
+        client,
+        isAuthenticated: admin !== null,
+        isClientAuthenticated: client !== null,
+        signOut,
+        signOutClient,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

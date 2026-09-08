@@ -1,11 +1,18 @@
-import type { TrustRequest, TrustDecisionType } from './trust';
-import type { FraudEvent } from './fraud';
+import type { TrustRequest, TrustDecisionType } from "./trust";
+import type { FraudEvent } from "./fraud";
 
 export interface AdminUser {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN';
+  role: "ADMIN";
+}
+
+export interface ClientUser {
+  id: number;
+  name: string;
+  email: string;
+  role: "CLIENT";
 }
 
 export interface DecisionStat {
@@ -25,7 +32,7 @@ export interface TrustActivityPoint {
 }
 
 export interface AdminDashboardMetrics {
-  timeRange: '7d' | '30d' | '90d';
+  timeRange: "7d" | "30d" | "90d";
   activeClients: {
     total: number;
     deltaPercentage: number;

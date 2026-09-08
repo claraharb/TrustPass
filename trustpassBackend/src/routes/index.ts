@@ -6,6 +6,7 @@ import packageRoutes from "./package.routes";
 import subscriptionRoutes from "./subscription.routes";
 import apiKeyRoutes from "./apiKey.routes";
 import trustRoutes from "./trust.routes";
+import clientRoutes from "./client.routes";
 
 import {
   authenticate,
@@ -21,6 +22,7 @@ router.use("/packages", packageRoutes);
 router.use("/client/subscriptions", subscriptionRoutes);
 router.use("/client/api-keys", apiKeyRoutes);
 router.use("/trust", trustRoutes);
+router.use("/client", clientRoutes);
 
 router.get("/health", async (req, res) => {
   try {
@@ -52,7 +54,7 @@ router.get(
       message: "You accessed a protected client route",
       user: req.user,
     });
-  }
+  },
 );
 
 router.get(
@@ -64,7 +66,7 @@ router.get(
       message: "You accessed a protected admin route",
       user: req.user,
     });
-  }
+  },
 );
 
 export default router;
