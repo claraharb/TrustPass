@@ -1,101 +1,33 @@
 import { Router } from "express";
 
-import {
-    authenticate,
-    authorize,
-} from "../middleware/auth.middleware";
+import { authenticate, authorize } from "../middleware/auth.middleware";
 
 import {
-    getClients,
-    createClient,
-    updateClient,
-    activateClient,
-    deactivateClient,
-    deleteClient,
-    getClientDetails,
-    createPackage,
-    updatePackage,
-    deactivatePackage,
-    getDashboard,
+  getClients,
+  getClientDetails,
+  createPackage,
+  updatePackage,
+  deactivatePackage,
+  getDashboard,
 } from "../controllers/admin.controller";
 
 const router = Router();
 
-router.get(
-    "/clients",
-    authenticate,
-    authorize("ADMIN"),
-    getClients
-);
+router.get("/clients", authenticate, authorize("ADMIN"), getClients);
 
-router.get(
-    "/dashboard",
-    authenticate,
-    authorize("ADMIN"),
-    getDashboard
-);
+router.get("/dashboard", authenticate, authorize("ADMIN"), getDashboard);
 
-router.get(
-    "/clients/:id",
-    authenticate,
-    authorize("ADMIN"),
-    getClientDetails
-);
+router.get("/clients/:id", authenticate, authorize("ADMIN"), getClientDetails);
 
-router.post(
-    "/clients",
-    authenticate,
-    authorize("ADMIN"),
-    createClient
-);
+router.post("/packages", authenticate, authorize("ADMIN"), createPackage);
 
-router.put(
-    "/clients/:id",
-    authenticate,
-    authorize("ADMIN"),
-    updateClient
-);
+router.put("/packages/:id", authenticate, authorize("ADMIN"), updatePackage);
 
 router.patch(
-    "/clients/:id/activate",
-    authenticate,
-    authorize("ADMIN"),
-    activateClient
-);
-
-router.patch(
-    "/clients/:id/deactivate",
-    authenticate,
-    authorize("ADMIN"),
-    deactivateClient
-);
-
-router.delete(
-    "/clients/:id",
-    authenticate,
-    authorize("ADMIN"),
-    deleteClient
-);
-
-router.post(
-    "/packages",
-    authenticate,
-    authorize("ADMIN"),
-    createPackage
-);
-
-router.put(
-    "/packages/:id",
-    authenticate,
-    authorize("ADMIN"),
-    updatePackage
-);
-
-router.patch(
-    "/packages/:id/deactivate",
-    authenticate,
-    authorize("ADMIN"),
-    deactivatePackage
+  "/packages/:id/deactivate",
+  authenticate,
+  authorize("ADMIN"),
+  deactivatePackage,
 );
 
 export default router;
