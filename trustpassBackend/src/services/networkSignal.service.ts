@@ -6,19 +6,12 @@ import {
   checkDeviceReachability,
 } from "./camara.service";
 
-
 interface NetworkSignal {
-
   signalType: string;
-
   source: string;
-
   value: string;
-
   riskScore: number;
-
   isPositive: boolean;
-
   details: string;
 }
 
@@ -37,19 +30,16 @@ export async function collectSimSwapSignal(
     `📡 Checking SIM Swap for ${phoneNumber}`
   );
 
-
   const result =
     await checkSimSwap(
       phoneNumber,
       240
     );
 
-
   console.log(
     "📡 SIM Swap result:",
     result
   );
-
 
   const signal: NetworkSignal = {
 
@@ -72,18 +62,14 @@ export async function collectSimSwapSignal(
 
     details:
       result.swapped
-
         ? "A recent SIM swap was detected for this phone number."
-
         : "No recent SIM swap was detected for this phone number.",
   };
-
 
   await saveRiskSignal(
     trustRequestId,
     signal
   );
-
 
   return signal;
 }
@@ -103,19 +89,16 @@ export async function collectDeviceSwapSignal(
     `📡 Checking Device Swap for ${phoneNumber}`
   );
 
-
   const result =
     await checkDeviceSwap(
       phoneNumber,
       240
     );
 
-
   console.log(
     "📡 Device Swap result:",
     result
   );
-
 
   const signal: NetworkSignal = {
 
@@ -138,18 +121,14 @@ export async function collectDeviceSwapSignal(
 
     details:
       result.swapped
-
         ? "A recent device swap was detected for this phone number."
-
         : "No recent device swap was detected for this phone number.",
   };
-
 
   await saveRiskSignal(
     trustRequestId,
     signal
   );
-
 
   return signal;
 }
@@ -169,27 +148,21 @@ export async function collectDeviceStatusSignal(
     `📡 Checking Device Status for ${phoneNumber}`
   );
 
-
   const result =
     await checkDeviceReachability(
       phoneNumber
     );
-
 
   console.log(
     "📡 Device Status result:",
     result
   );
 
-
   const connectivity =
     result.connectivity &&
     result.connectivity.length > 0
-
       ? result.connectivity.join(", ")
-
       : "NONE";
-
 
   const signal: NetworkSignal = {
 
@@ -202,10 +175,6 @@ export async function collectDeviceStatusSignal(
     value:
       String(result.reachable),
 
-    /*
-     * A reachable device is positive.
-     * An unreachable device increases risk.
-     */
     riskScore:
       result.reachable
         ? 10
@@ -216,18 +185,74 @@ export async function collectDeviceStatusSignal(
 
     details:
       result.reachable
-
         ? `Device is reachable through the network (${connectivity}).`
-
         : "Device is currently not reachable through the mobile network.",
   };
-
 
   await saveRiskSignal(
     trustRequestId,
     signal
   );
 
+  return signal;
+}
+
+
+/**
+ * ============================================================
+ * NUMBER VERIFICATION
+ * ============================================================
+ *
+ * Saves the result returned by Nokia Number Verification.
+ *
+ * The actual OAuth/API verification is performed by
+ * numberVerification.service.ts.
+ */
+export async function collectNumberVerificationSignal(
+  trustRequestId: number,
+  verified: boolean
+): Promise<NetworkSignal> {
+
+  console.log(
+    "📡 Saving Number Verification signal:",
+    verified
+  );
+
+  const signal: NetworkSignal = {
+
+    signalType:
+      "NUMBER_VERIFICATION",
+
+    source:
+      "NOKIA_CAMARA",
+
+    value:
+      String(verified),
+
+    /*
+     * A successful Number Verification is a strong
+     * positive trust signal.
+     *
+     * A failed verification significantly increases risk.
+     */
+    riskScore:
+      verified
+        ? 5
+        : 90,
+
+    isPositive:
+      verified,
+
+    details:
+      verified
+        ? "Nokia Number Verification confirmed that the phone number matches the device."
+        : "Nokia Number Verification could not confirm that the phone number matches the device.",
+  };
+
+  await saveRiskSignal(
+    trustRequestId,
+    signal
+  );
 
   return signal;
 }
@@ -289,7 +314,6 @@ export async function collectSelectedEvidence(
   const signals:
     NetworkSignal[] = [];
 
-
   console.log(
     "========================================"
   );
@@ -332,21 +356,22 @@ export async function collectSelectedEvidence(
 
       case "NUMBER_VERIFICATION":
 
-        console.log(
-          "📡 AI selected NUMBER_VERIFICATION"
-        );
-
         /*
-         * Number Verification requires its
-         * appropriate consent / authorization flow.
+         * Number Verification is intentionally NOT executed
+         * here.
          *
-         * We will integrate this separately instead
-         * of pretending that an API-key-only call
-         * verifies the user's number.
+         * It requires the Nokia OAuth/consent flow.
+         *
+         * The Trust Controller detects this signal before
+         * calling this orchestrator and returns 202 PENDING.
+         *
+         * After the user completes Nokia verification,
+         * the callback saves the result using
+         * collectNumberVerificationSignal().
          */
 
         console.log(
-          "⚠️ NUMBER_VERIFICATION requires the CAMARA authorization flow and is not executed yet."
+          "📡 NUMBER_VERIFICATION is handled through the Nokia OAuth callback."
         );
 
         break;

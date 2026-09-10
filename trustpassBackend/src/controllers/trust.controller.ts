@@ -30,6 +30,10 @@ import {
     runTrustAgent,
 } from "../services/aiAgent.service";
 
+import {
+    createNumberVerificationAuthorizationUrl,
+} from "../services/numberVerification.service";
+
 
 const trustCheckSchema = z.object({
     action: z.string().min(1),
@@ -92,6 +96,7 @@ export async function trustCheck(
         if (!usageCheck.allowed) {
             return res.status(429).json({
                 message: usageCheck.reason,
+
                 remainingRequests:
                     usageCheck.remainingRequests,
             });
@@ -110,6 +115,7 @@ export async function trustCheck(
         if (!parsed.success) {
             return res.status(400).json({
                 message: "Invalid request",
+
                 errors:
                     parsed.error.flatten(),
             });
@@ -134,9 +140,11 @@ export async function trustCheck(
                     clientId:
                         validatedKey.clientId,
 
-                    name: action,
+                    name:
+                        action,
 
-                    isActive: true,
+                    isActive:
+                        true,
                 },
             });
 
@@ -180,7 +188,8 @@ export async function trustCheck(
 
                     userAgent,
 
-                    status: "PENDING",
+                    status:
+                        "PENDING",
                 },
             });
 
@@ -257,12 +266,144 @@ export async function trustCheck(
 
 
         // =========================================================
+        // 8.1. Persist AI-selected signals
+        // =========================================================
+
+        await prisma.trustRequest.update({
+            where: {
+                id:
+                    trustRequest.id,
+            },
+
+            data: {
+                aiSelectedSignals:
+                    JSON.stringify(
+                        aiDecision.selectedSignals
+                    ),
+            },
+        });
+
+
+        // =========================================================
+        // 8.5. Handle Number Verification if selected by AI
+        // =========================================================
+
+        if (
+            aiDecision.selectedSignals.includes(
+                "NUMBER_VERIFICATION"
+            )
+        ) {
+
+            if (!phoneNumber) {
+
+                return res.status(400).json({
+
+                    message:
+                        "Phone number is required for Number Verification",
+
+                    requestId:
+                        trustRequest.requestId,
+                });
+            }
+
+
+            const numberVerification =
+                createNumberVerificationAuthorizationUrl(
+                    phoneNumber,
+
+                    trustRequest.id
+                );
+
+
+            // -----------------------------------------------------
+            // Save Nokia OAuth state
+            // -----------------------------------------------------
+
+            await prisma.trustRequest.update({
+
+                where: {
+                    id:
+                        trustRequest.id,
+                },
+
+                data: {
+
+                    numberVerificationState:
+                        numberVerification.state,
+
+                    status:
+                        "PENDING",
+                },
+            });
+
+
+            // -----------------------------------------------------
+            // Return PENDING
+            // -----------------------------------------------------
+
+            return res.status(202).json({
+
+                requestId:
+                    trustRequest.requestId,
+
+                status:
+                    "PENDING",
+
+                pendingAction:
+                    "NUMBER_VERIFICATION",
+
+                authorizationUrl:
+                    numberVerification.authorizationUrl,
+
+
+                // -------------------------------------------------
+                // Protected action assessment
+                // -------------------------------------------------
+
+                assessment: {
+
+                    actionRiskLevel:
+                        assessment.actionRiskLevel,
+
+                    evidenceRequirements:
+                        assessment.evidenceRequirements,
+                },
+
+
+                // -------------------------------------------------
+                // AI Agent information
+                // -------------------------------------------------
+
+                aiAgent: {
+
+                    riskAssessment:
+                        aiDecision.riskAssessment,
+
+                    selectedSignals:
+                        aiDecision.selectedSignals,
+
+                    additionalEvidenceNeeded:
+                        aiDecision.additionalEvidenceNeeded,
+
+                    reason:
+                        aiDecision.reason,
+                },
+
+
+                message:
+                    "Number Verification is required to complete the trust assessment.",
+            });
+        }
+
+
+        // =========================================================
         // 9. Collect network evidence selected
         //    by the AI Agent
         // =========================================================
 
         const signals =
             await collectSelectedEvidence(
+
                 trustRequest.id,
 
                 aiDecision.selectedSignals,
@@ -277,10 +418,13 @@ export async function trustCheck(
 
         let otpActivity = null;
 
-        if (action === "OTP_REQUEST") {
+        if (
+            action === "OTP_REQUEST"
+        ) {
 
             otpActivity =
                 await analyzeOtpActivity(
+
                     validatedKey.clientId,
 
                     phoneNumber,
@@ -291,12 +435,14 @@ export async function trustCheck(
                 );
 
 
-            // -------------------------------------------------------
-            // Save OTP bombing as a RiskSignal
-            // -------------------------------------------------------
+            // -----------------------------------------------------
+            // Save OTP bombing as RiskSignal
+            // -----------------------------------------------------
 
             await prisma.riskSignal.create({
+
                 data: {
+
                     trustRequestId:
                         trustRequest.id,
 
@@ -323,11 +469,12 @@ export async function trustCheck(
             });
 
 
-            // -------------------------------------------------------
+            // -----------------------------------------------------
             // Add behavioral signal to response
-            // -------------------------------------------------------
+            // -----------------------------------------------------
 
             signals.push({
+
                 signalType:
                     "OTP_BOMBING",
 
@@ -357,12 +504,14 @@ export async function trustCheck(
 
         const decisionResult =
             calculateTrustDecision({
+
                 actionRiskLevel:
                     assessment.actionRiskLevel,
 
                 signals:
                     signals.map(
                         (signal) => ({
+
                             signalType:
                                 signal.signalType,
 
@@ -385,6 +534,7 @@ export async function trustCheck(
 
         const savedDecision =
             await saveTrustDecision(
+
                 trustRequest.id,
 
                 decisionResult
@@ -396,6 +546,7 @@ export async function trustCheck(
         // =========================================================
 
         await recordApiUsage(
+
             validatedKey.clientId,
 
             validatedKey.id,
@@ -423,9 +574,9 @@ export async function trustCheck(
                 "COMPLETED",
 
 
-            // -------------------------------------------------------
+            // -----------------------------------------------------
             // Protected action assessment
-            // -------------------------------------------------------
+            // -----------------------------------------------------
 
             assessment: {
 
@@ -437,9 +588,9 @@ export async function trustCheck(
             },
 
 
-            // -------------------------------------------------------
+            // -----------------------------------------------------
             // AI Agent decision
-            // -------------------------------------------------------
+            // -----------------------------------------------------
 
             aiAgent: {
 
@@ -457,16 +608,16 @@ export async function trustCheck(
             },
 
 
-            // -------------------------------------------------------
+            // -----------------------------------------------------
             // Collected risk signals
-            // -------------------------------------------------------
+            // -----------------------------------------------------
 
             signals,
 
 
-            // -------------------------------------------------------
+            // -----------------------------------------------------
             // Final TrustPass decision
-            // -------------------------------------------------------
+            // -----------------------------------------------------
 
             decision: {
 
@@ -483,6 +634,7 @@ export async function trustCheck(
                     savedDecision.explanation,
             },
 
+
             message:
                 "Trust assessment completed",
         });
@@ -495,6 +647,7 @@ export async function trustCheck(
         );
 
         return res.status(500).json({
+
             message:
                 "Internal server error",
         });

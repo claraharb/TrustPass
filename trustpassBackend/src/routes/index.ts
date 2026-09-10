@@ -7,6 +7,7 @@ import subscriptionRoutes from "./subscription.routes";
 import apiKeyRoutes from "./apiKey.routes";
 import trustRoutes from "./trust.routes";
 import clientRoutes from "./client.routes";
+import numberVerificationRoutes from "./numberVerification.routes";
 
 import {
   authenticate,
@@ -23,6 +24,10 @@ router.use("/client/subscriptions", subscriptionRoutes);
 router.use("/client/api-keys", apiKeyRoutes);
 router.use("/trust", trustRoutes);
 router.use("/client", clientRoutes);
+router.use(
+  "/camara/number-verification",
+  numberVerificationRoutes
+);
 
 router.get("/health", async (req, res) => {
   try {

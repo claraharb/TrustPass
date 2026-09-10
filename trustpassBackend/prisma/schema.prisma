@@ -105,6 +105,8 @@ model TrustRequest {
   ipAddress         String?
   userAgent         String?
   status            String          @default("PENDING")
+  numberVerificationState String?
+  aiSelectedSignals String?
   createdAt         DateTime        @default(now())
   completedAt       DateTime?
   fraudEvents       FraudEvent[]
