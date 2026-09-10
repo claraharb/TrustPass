@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
+
 export interface TrustAgentInput {
   action: string;
   phoneNumber?: string;
@@ -9,6 +10,7 @@ export interface TrustAgentInput {
   actionRiskLevel: "LOW" | "MEDIUM" | "HIGH";
 }
 
+
 export interface TrustAgentDecision {
   riskAssessment: "LOW" | "MEDIUM" | "HIGH";
   selectedSignals: string[];
@@ -16,15 +18,22 @@ export interface TrustAgentDecision {
   reason: string;
 }
 
-const apiKey = process.env.GEMINI_API_KEY;
+
+const apiKey =
+  process.env.GEMINI_API_KEY;
+
 
 if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is not defined");
+  throw new Error(
+    "GEMINI_API_KEY is not defined"
+  );
 }
 
-const client = new GoogleGenAI({
-  apiKey,
-});
+
+const client =
+  new GoogleGenAI({
+    apiKey,
+  });
 
 
 /**
@@ -35,8 +44,8 @@ const client = new GoogleGenAI({
  * The AI Agent analyzes the transaction and determines
  * which telecom/network signals should be collected.
  *
- * The Agent does NOT directly make the final ALLOW /
- * CHALLENGE / BLOCK decision.
+ * The Agent does NOT directly make the final
+ * ALLOW / CHALLENGE / BLOCK decision.
  *
  * Instead:
  *
@@ -52,6 +61,7 @@ const client = new GoogleGenAI({
  *    ↓
  * Final decision
  */
+
 export async function runTrustAgent(
   input: TrustAgentInput
 ): Promise<TrustAgentDecision> {
@@ -122,6 +132,18 @@ Checks whether the phone number/SIM was recently associated
 with another device.
 
 
+DEVICE_ROAMING
+
+Checks whether the device is currently roaming on another
+mobile network or in another country.
+
+Roaming does NOT automatically mean fraud.
+
+It is contextual evidence that can be useful when combined
+with other suspicious signals or when the transaction is
+sensitive.
+
+
 LOCATION_VERIFICATION
 
 Checks whether the user's network location is consistent
@@ -148,6 +170,9 @@ consider stronger device evidence such as:
 - DEVICE_STATUS
 - DEVICE_SWAP
 
+DEVICE_ROAMING may be considered when roaming context
+would materially improve the assessment.
+
 
 2. LOGIN
 
@@ -156,6 +181,9 @@ For login requests:
 - Consider NUMBER_VERIFICATION when a phone number exists.
 - Consider SIM_SWAP when a phone number exists.
 - Consider device evidence for higher-risk situations.
+- Consider DEVICE_ROAMING when roaming context could
+  materially help distinguish legitimate travel from
+  suspicious account activity.
 
 
 3. HIGH-RISK ACTIONS
@@ -163,12 +191,25 @@ For login requests:
 High-risk actions should generally receive stronger
 telecom evidence than low-risk actions.
 
+Consider:
+
+- NUMBER_VERIFICATION
+- SIM_SWAP
+- DEVICE_SWAP
+- DEVICE_STATUS
+- DEVICE_ROAMING
+
+Do NOT automatically select every signal.
+
 
 4. LOW-RISK ACTIONS
 
 Avoid unnecessary network API calls.
 
 Only select signals that materially help the assessment.
+
+For a normal low-risk transaction, use the smallest
+reasonable set of evidence.
 
 
 5. OTP BOMBING
@@ -178,16 +219,91 @@ Repeated OTP attempts increase fraud risk.
 A high number of attempts should make the agent consider
 additional evidence.
 
+Possible additional signals include:
 
-6. EVIDENCE SELECTION
+- DEVICE_STATUS
+- DEVICE_SWAP
+- DEVICE_ROAMING
+
+DEVICE_ROAMING should only be selected if it adds
+meaningful contextual evidence.
+
+
+6. DEVICE ROAMING
+
+DEVICE_ROAMING is contextual evidence.
+
+Do NOT select DEVICE_ROAMING simply because the action
+is high risk.
+
+Select DEVICE_ROAMING when roaming context would
+materially improve the assessment, for example:
+
+- unusual travel or geographic context is relevant,
+- the transaction involves sensitive account access,
+- the combination of roaming and another signal may indicate
+  account takeover,
+- the device's current network context helps explain
+  suspicious behavior,
+- or other available evidence is insufficient.
+
+Roaming does NOT automatically mean fraud.
+
+Do NOT block a transaction solely because the device
+is roaming.
+
+
+7. MINIMUM NECESSARY EVIDENCE
+
+Select the MINIMUM set of network signals needed to
+meaningfully assess the transaction.
 
 Do NOT automatically select every available signal.
 
-Choose only the signals that are relevant to this
+Use these guidelines:
+
+LOW-RISK:
+Usually select 1–2 signals.
+
+MEDIUM-RISK:
+Usually select 2–3 signals.
+
+HIGH-RISK:
+Usually select 3–4 signals.
+
+Do not select more than 4 signals.
+
+Avoid unnecessary network API calls because they increase
+latency and consume telecom API resources.
+
+
+8. SIGNAL PRIORITY
+
+Prefer signals that directly address the risk of the
 specific transaction.
 
+For authentication-related transactions:
 
-7. ADDITIONAL EVIDENCE
+1. NUMBER_VERIFICATION
+2. SIM_SWAP
+3. DEVICE_SWAP
+4. DEVICE_STATUS
+5. DEVICE_ROAMING when contextual information is useful
+
+For suspicious OTP activity:
+
+1. SIM_SWAP
+2. NUMBER_VERIFICATION
+3. DEVICE_SWAP
+4. DEVICE_STATUS
+
+DEVICE_ROAMING may be added when roaming context provides
+additional useful evidence.
+
+Do not select a signal merely because it is available.
+
+
+9. ADDITIONAL EVIDENCE
 
 Set:
 
@@ -197,31 +313,57 @@ when:
 
 - suspicious behavior exists,
 - the transaction has high risk,
-- available evidence is insufficient,
-- signals conflict,
-- or additional network evidence would materially
-  improve confidence.
+- the selected evidence is insufficient,
+- signals are likely to conflict,
+- or another signal would materially improve confidence.
 
 Set:
 
 additionalEvidenceNeeded = false
 
-only when the currently available information is
-sufficient for the current stage of assessment.
+when the selected signals are sufficient for the current
+assessment.
+
+IMPORTANT:
+
+For LOW-RISK transactions, additionalEvidenceNeeded should
+normally be false unless there is explicit suspicious
+behavior or conflicting information.
+
+If you select a small sufficient set of signals for a
+low-risk transaction, return:
+
+additionalEvidenceNeeded = false.
 
 
-8. CONSISTENCY
+10. CONSISTENCY
 
-If you select multiple network signals because the
-transaction requires additional investigation,
-additionalEvidenceNeeded should normally be true.
+Your response must be internally consistent.
 
-Never say that additional evidence is required while
-returning additionalEvidenceNeeded=false.
+If riskAssessment is LOW and there is no suspicious
+behavior, additionalEvidenceNeeded should be false.
+
+If additionalEvidenceNeeded is true, your reason must
+explain why more evidence is needed.
+
+If you select multiple signals for additional
+investigation, explain why those signals are relevant.
 
 Do not claim that a network API has detected fraud.
 
 You are selecting APIs that TrustPass should call NEXT.
+
+
+11. FINAL DECISION
+
+You MUST NOT return:
+
+ALLOW
+CHALLENGE
+BLOCK
+
+The deterministic Trust Engine is responsible for the
+final decision after network evidence is collected.
 
 
 ============================================================
@@ -247,11 +389,13 @@ Return exactly:
   "reason": "Short explanation"
 }
 
+
 Allowed riskAssessment values:
 
 LOW
 MEDIUM
 HIGH
+
 
 Allowed selectedSignals:
 
@@ -259,7 +403,9 @@ NUMBER_VERIFICATION
 SIM_SWAP
 DEVICE_STATUS
 DEVICE_SWAP
+DEVICE_ROAMING
 LOCATION_VERIFICATION
+
 
 additionalEvidenceNeeded:
 
@@ -291,6 +437,7 @@ false
 
 
     if (!text) {
+
       throw new Error(
         "AI Agent returned an empty response"
       );
@@ -323,6 +470,7 @@ false
       "🤖 AI Agent decision:"
     );
 
+
     console.log(
       JSON.stringify(
         parsed,
@@ -343,9 +491,10 @@ false
 
 
     /*
-     * If Gemini is unavailable, TrustPass
-     * continues using deterministic fallback
-     * logic.
+     * If Gemini is unavailable,
+     * rate-limited, or returns invalid data,
+     * TrustPass continues using deterministic
+     * fallback logic.
      */
 
     return fallbackAgentDecision(
@@ -362,6 +511,7 @@ false
  *
  * Removes accidental markdown code fences.
  */
+
 function cleanJsonResponse(
   text: string
 ): string {
@@ -394,6 +544,7 @@ function cleanJsonResponse(
  *
  * Never blindly trust an LLM response.
  */
+
 function validateAgentDecision(
   decision: TrustAgentDecision
 ): void {
@@ -410,9 +561,14 @@ function validateAgentDecision(
     "SIM_SWAP",
     "DEVICE_STATUS",
     "DEVICE_SWAP",
+    "DEVICE_ROAMING",
     "LOCATION_VERIFICATION",
   ];
 
+
+  // ==========================================================
+  // VALIDATE RISK ASSESSMENT
+  // ==========================================================
 
   if (
     !validRiskLevels.includes(
@@ -426,6 +582,10 @@ function validateAgentDecision(
   }
 
 
+  // ==========================================================
+  // VALIDATE SELECTED SIGNALS
+  // ==========================================================
+
   if (
     !Array.isArray(
       decision.selectedSignals
@@ -437,6 +597,25 @@ function validateAgentDecision(
     );
   }
 
+
+  /*
+   * TrustPass should not allow the AI to select
+   * an excessive number of network APIs.
+   */
+
+  if (
+    decision.selectedSignals.length > 4
+  ) {
+
+    throw new Error(
+      "AI Agent selected too many network signals"
+    );
+  }
+
+
+  /*
+   * Validate every selected signal.
+   */
 
   for (
     const signal
@@ -456,6 +635,10 @@ function validateAgentDecision(
   }
 
 
+  // ==========================================================
+  // VALIDATE ADDITIONAL EVIDENCE FLAG
+  // ==========================================================
+
   if (
     typeof decision.additionalEvidenceNeeded !==
     "boolean"
@@ -467,15 +650,44 @@ function validateAgentDecision(
   }
 
 
+  // ==========================================================
+  // VALIDATE REASON
+  // ==========================================================
+
   if (
     typeof decision.reason !==
-    "string" ||
+      "string" ||
     decision.reason.trim()
       .length === 0
   ) {
 
     throw new Error(
       "AI Agent returned invalid reason"
+    );
+  }
+
+
+  // ==========================================================
+  // CONSISTENCY CHECK
+  // ==========================================================
+
+  /*
+   * A LOW-risk transaction should not request
+   * additional evidence unless there is a specific
+   * suspicious context.
+   *
+   * Since the AI response does not explicitly provide
+   * a separate suspicious flag, we reject this combination
+   * and allow the deterministic fallback to handle it.
+   */
+
+  if (
+    decision.riskAssessment === "LOW" &&
+    decision.additionalEvidenceNeeded === true
+  ) {
+
+    throw new Error(
+      "AI Agent returned inconsistent LOW risk assessment with additionalEvidenceNeeded=true"
     );
   }
 }
@@ -489,6 +701,7 @@ function validateAgentDecision(
  * Used when Gemini is unavailable,
  * rate-limited, or returns invalid data.
  */
+
 function fallbackAgentDecision(
   input: TrustAgentInput
 ): TrustAgentDecision {
@@ -509,8 +722,33 @@ function fallbackAgentDecision(
 
     const suspiciousOtpActivity =
       input.attemptCount !==
-      undefined &&
+        undefined &&
       input.attemptCount >= 5;
+
+
+    let selectedSignals: string[];
+
+
+    if (
+      suspiciousOtpActivity ||
+      input.actionRiskLevel ===
+        "HIGH"
+    ) {
+
+      selectedSignals = [
+        "SIM_SWAP",
+        "NUMBER_VERIFICATION",
+        "DEVICE_STATUS",
+        "DEVICE_ROAMING",
+      ];
+
+    } else {
+
+      selectedSignals = [
+        "SIM_SWAP",
+        "NUMBER_VERIFICATION",
+      ];
+    }
 
 
     return {
@@ -521,24 +759,27 @@ function fallbackAgentDecision(
           : input.actionRiskLevel,
 
 
-      selectedSignals: [
-        "SIM_SWAP",
-        "NUMBER_VERIFICATION",
-      ],
+      selectedSignals:
+        selectedSignals,
 
 
       additionalEvidenceNeeded:
         suspiciousOtpActivity ||
         input.actionRiskLevel ===
-        "HIGH",
+          "HIGH",
 
 
       reason:
         suspiciousOtpActivity
 
-          ? "AI service unavailable. Repeated OTP requests require stronger telecom verification."
+          ? "AI service unavailable. Repeated OTP requests require stronger telecom and device-context evidence."
 
-          : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
+          : input.actionRiskLevel ===
+            "HIGH"
+
+            ? "AI service unavailable. High-risk OTP request requires stronger telecom evidence."
+
+            : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
     };
   }
 
@@ -552,6 +793,37 @@ function fallbackAgentDecision(
     "LOGIN"
   ) {
 
+    let selectedSignals:
+      string[] = [];
+
+
+    if (
+      input.phoneNumber
+    ) {
+
+      selectedSignals = [
+        "NUMBER_VERIFICATION",
+        "SIM_SWAP",
+      ];
+
+
+      /*
+       * High-risk login gets additional
+       * roaming context.
+       */
+
+      if (
+        input.actionRiskLevel ===
+        "HIGH"
+      ) {
+
+        selectedSignals.push(
+          "DEVICE_ROAMING"
+        );
+      }
+    }
+
+
     return {
 
       riskAssessment:
@@ -559,23 +831,59 @@ function fallbackAgentDecision(
 
 
       selectedSignals:
+        selectedSignals,
+
+
+      additionalEvidenceNeeded:
+        input.actionRiskLevel ===
+          "HIGH",
+
+
+      reason:
+        input.actionRiskLevel ===
+          "HIGH"
+
+          ? "AI service unavailable. TrustPass selected authentication evidence and roaming context for the high-risk login."
+
+          : "AI service unavailable. TrustPass selected authentication-related telecom evidence.",
+    };
+  }
+
+
+  // ==========================================================
+  // GENERIC HIGH-RISK ACTION
+  // ==========================================================
+
+  if (
+    input.actionRiskLevel ===
+    "HIGH"
+  ) {
+
+    return {
+
+      riskAssessment:
+        "HIGH",
+
+
+      selectedSignals:
         input.phoneNumber
 
           ? [
-            "NUMBER_VERIFICATION",
-            "SIM_SWAP",
-          ]
+              "NUMBER_VERIFICATION",
+              "SIM_SWAP",
+              "DEVICE_SWAP",
+              "DEVICE_ROAMING",
+            ]
 
           : [],
 
 
       additionalEvidenceNeeded:
-        input.actionRiskLevel ===
-        "HIGH",
+        true,
 
 
       reason:
-        "AI service unavailable. TrustPass selected authentication-related telecom evidence.",
+        "AI service unavailable. TrustPass selected conservative telecom and device-context evidence for the high-risk action.",
     };
   }
 
@@ -594,15 +902,14 @@ function fallbackAgentDecision(
       input.phoneNumber
 
         ? [
-          "NUMBER_VERIFICATION",
-        ]
+            "NUMBER_VERIFICATION",
+          ]
 
         : [],
 
 
     additionalEvidenceNeeded:
-      input.actionRiskLevel ===
-      "HIGH",
+      false,
 
 
     reason:

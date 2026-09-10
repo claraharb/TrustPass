@@ -12,6 +12,13 @@ interface DeviceReachabilityResult {
   lastStatusTime?: string;
 }
 
+interface DeviceRoamingResult {
+  roaming: boolean;
+  countryCode?: number;
+  countryName?: string[];
+  lastStatusTime?: string;
+}
+
 
 /**
  * Common Nokia Network as Code configuration.
@@ -292,6 +299,109 @@ export async function checkDeviceReachability(
 
     connectivity:
       data.connectivity,
+
+    lastStatusTime:
+      data.lastStatusTime,
+  };
+}
+
+
+/**
+ * ============================================================
+ * DEVICE ROAMING STATUS
+ * ============================================================
+ *
+ * Checks whether the device is currently roaming.
+ *
+ * Nokia Device Roaming Status Retrieve v1.1
+ *
+ * +99999991000 → roaming
+ * +99999991001 → not roaming
+ */
+export async function checkDeviceRoaming(
+  phoneNumber: string
+): Promise<DeviceRoamingResult> {
+
+  const {
+    apiKey,
+    host,
+  } = getNokiaConfig();
+
+  const url =
+    process.env.NOKIA_DEVICE_ROAMING_URL;
+
+  if (!url) {
+    throw new Error(
+      "NOKIA_DEVICE_ROAMING_URL is not defined"
+    );
+  }
+
+
+  const response = await fetch(
+    url,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+
+        "X-RapidAPI-Key":
+          apiKey,
+
+        "X-RapidAPI-Host":
+          host,
+      },
+
+      body: JSON.stringify({
+        device: {
+          phoneNumber,
+        },
+      }),
+    }
+  );
+
+
+  if (!response.ok) {
+
+    const errorBody =
+      await response.text();
+
+    throw new Error(
+      `Nokia Device Roaming API failed (${response.status}): ${errorBody}`
+    );
+  }
+
+
+  const data =
+    (await response.json()) as {
+      roaming?: boolean;
+      countryCode?: number;
+      countryName?: string[];
+      lastStatusTime?: string;
+    };
+
+
+  if (
+    typeof data.roaming !==
+    "boolean"
+  ) {
+    throw new Error(
+      "Invalid Device Roaming response from Nokia"
+    );
+  }
+
+
+  return {
+
+    roaming:
+      data.roaming,
+
+    countryCode:
+      data.countryCode,
+
+    countryName:
+      data.countryName,
 
     lastStatusTime:
       data.lastStatusTime,

@@ -4,7 +4,9 @@ import {
   checkSimSwap,
   checkDeviceSwap,
   checkDeviceReachability,
+  checkDeviceRoaming,
 } from "./camara.service";
+
 
 interface NetworkSignal {
   signalType: string;
@@ -21,6 +23,7 @@ interface NetworkSignal {
  * SIM SWAP
  * ============================================================
  */
+
 export async function collectSimSwapSignal(
   trustRequestId: number,
   phoneNumber: string
@@ -66,6 +69,7 @@ export async function collectSimSwapSignal(
         : "No recent SIM swap was detected for this phone number.",
   };
 
+
   await saveRiskSignal(
     trustRequestId,
     signal
@@ -80,6 +84,7 @@ export async function collectSimSwapSignal(
  * DEVICE SWAP
  * ============================================================
  */
+
 export async function collectDeviceSwapSignal(
   trustRequestId: number,
   phoneNumber: string
@@ -125,6 +130,7 @@ export async function collectDeviceSwapSignal(
         : "No recent device swap was detected for this phone number.",
   };
 
+
   await saveRiskSignal(
     trustRequestId,
     signal
@@ -139,6 +145,7 @@ export async function collectDeviceSwapSignal(
  * DEVICE STATUS / REACHABILITY
  * ============================================================
  */
+
 export async function collectDeviceStatusSignal(
   trustRequestId: number,
   phoneNumber: string
@@ -163,6 +170,7 @@ export async function collectDeviceStatusSignal(
     result.connectivity.length > 0
       ? result.connectivity.join(", ")
       : "NONE";
+
 
   const signal: NetworkSignal = {
 
@@ -189,6 +197,88 @@ export async function collectDeviceStatusSignal(
         : "Device is currently not reachable through the mobile network.",
   };
 
+
+  await saveRiskSignal(
+    trustRequestId,
+    signal
+  );
+
+  return signal;
+}
+
+
+/**
+ * ============================================================
+ * DEVICE ROAMING
+ * ============================================================
+ */
+
+export async function collectDeviceRoamingSignal(
+  trustRequestId: number,
+  phoneNumber: string
+): Promise<NetworkSignal> {
+
+  console.log(
+    `🌍 Checking Device Roaming for ${phoneNumber}`
+  );
+
+  const result =
+    await checkDeviceRoaming(
+      phoneNumber
+    );
+
+  console.log(
+    "🌍 Device Roaming result:",
+    result
+  );
+
+
+  /*
+   * Roaming does NOT automatically mean fraud.
+   *
+   * We therefore give it a moderate risk score.
+   *
+   * roaming = true  → 50
+   * roaming = false → 5
+   */
+
+  const signal: NetworkSignal = {
+
+    signalType:
+      "DEVICE_ROAMING",
+
+    source:
+      "NOKIA_CAMARA",
+
+    value:
+      String(result.roaming),
+
+    riskScore:
+      result.roaming
+        ? 50
+        : 5,
+
+    /*
+     * Not roaming is a positive signal.
+     *
+     * Roaming is neutral/suspicious evidence,
+     * but not automatically fraudulent.
+     */
+    isPositive:
+      !result.roaming,
+
+    details:
+      result.roaming
+        ? `Device is currently roaming${
+            result.countryName &&
+            result.countryName.length > 0
+              ? ` in ${result.countryName.join(", ")}`
+              : ""
+          }.`
+        : "Device is not currently roaming.",
+  };
+
+
   await saveRiskSignal(
     trustRequestId,
     signal
@@ -208,6 +298,7 @@ export async function collectDeviceStatusSignal(
  * The actual OAuth/API verification is performed by
  * numberVerification.service.ts.
  */
+
 export async function collectNumberVerificationSignal(
   trustRequestId: number,
   verified: boolean
@@ -235,6 +326,7 @@ export async function collectNumberVerificationSignal(
      *
      * A failed verification significantly increases risk.
      */
+
     riskScore:
       verified
         ? 5
@@ -248,6 +340,7 @@ export async function collectNumberVerificationSignal(
         ? "Nokia Number Verification confirmed that the phone number matches the device."
         : "Nokia Number Verification could not confirm that the phone number matches the device.",
   };
+
 
   await saveRiskSignal(
     trustRequestId,
@@ -263,6 +356,7 @@ export async function collectNumberVerificationSignal(
  * SAVE RISK SIGNAL
  * ============================================================
  */
+
 async function saveRiskSignal(
   trustRequestId: number,
   signal: NetworkSignal
@@ -301,6 +395,7 @@ async function saveRiskSignal(
  * AI-SELECTED EVIDENCE ORCHESTRATOR
  * ============================================================
  */
+
 export async function collectSelectedEvidence(
 
   trustRequestId: number,
@@ -313,6 +408,7 @@ export async function collectSelectedEvidence(
 
   const signals:
     NetworkSignal[] = [];
+
 
   console.log(
     "========================================"
@@ -465,6 +561,38 @@ export async function collectSelectedEvidence(
 
           console.error(
             "❌ DEVICE_SWAP failed:",
+            error
+          );
+
+        }
+
+        break;
+
+
+      // ======================================================
+      // DEVICE ROAMING
+      // ======================================================
+
+      case "DEVICE_ROAMING":
+
+        console.log(
+          "🌍 AI selected DEVICE_ROAMING"
+        );
+
+        try {
+
+          const signal =
+            await collectDeviceRoamingSignal(
+              trustRequestId,
+              phoneNumber
+            );
+
+          signals.push(signal);
+
+        } catch (error) {
+
+          console.error(
+            "❌ DEVICE_ROAMING failed:",
             error
           );
 
