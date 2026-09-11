@@ -16,6 +16,7 @@ import { ClientLayout } from "../layouts/ClientLayout";
 import { ClientHome } from "../pages/client/ClientHome";
 import { ClientApiKeys } from "../pages/client/ClientApiKeys";
 import { ClientAccount } from "../pages/client/ClientAccount";
+import { ClientTrustCheck } from "../pages/client/ClientTrustCheck";
 
 export default function AppRoutes() {
   return (
@@ -49,6 +50,7 @@ export default function AppRoutes() {
         <Route path="/client" element={<ClientLayout />}>
           <Route index element={<ClientHome />} />
           <Route path="api-keys" element={<ClientApiKeys />} />
+          <Route path="trust-check" element={<ClientTrustCheck />} />
           <Route path="account" element={<ClientAccount />} />
         </Route>
       </Route>

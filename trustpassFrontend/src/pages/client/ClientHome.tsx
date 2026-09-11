@@ -5,15 +5,18 @@ import { useAuth } from '../../auth/useAuth';
 import {
   createClientSubscription,
   getClientPackages,
+  getClientUsage,
   getCurrentClientSubscription,
   type ClientPackage,
   type ClientSubscription,
+  type ClientUsage,
 } from '../../services/api';
 
 export function ClientHome() {
   const { client } = useAuth();
   const [packages, setPackages] = useState<ClientPackage[]>([]);
   const [subscription, setSubscription] = useState<ClientSubscription | null>(null);
+  const [usage, setUsage] = useState<ClientUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -28,6 +31,12 @@ export function ClientHome() {
         try {
           const subscriptionResponse = await getCurrentClientSubscription();
           setSubscription(subscriptionResponse.subscription);
+          try {
+            const usageResponse = await getClientUsage();
+            setUsage(usageResponse.usage);
+          } catch {
+            setUsage(null);
+          }
         } catch {
           setSubscription(null);
         }
@@ -72,7 +81,7 @@ export function ClientHome() {
 
       <section className="client-summary-grid" aria-label="Workspace summary">
         <div className="client-summary-item"><span>Current plan</span><strong>{subscription?.package.name ?? 'Not activated'}</strong><small>{subscription ? `Active until ${formatDate(subscription.endDate)}` : 'Choose a package to begin'}</small></div>
-        <div className="client-summary-item"><span>API requests</span><strong>{subscription?.requestsUsed.toLocaleString() ?? '0'}</strong><small>{subscription ? `of ${subscription.package.requestLimit.toLocaleString()} included` : 'Usage will appear here'}</small></div>
+        <div className="client-summary-item"><span>API requests</span><strong>{usage?.requestsUsed.toLocaleString() ?? subscription?.requestsUsed.toLocaleString() ?? '0'}</strong><small>{usage ? `${usage.remainingRequests.toLocaleString()} remaining` : subscription ? `of ${subscription.package.requestLimit.toLocaleString()} included` : 'Usage will appear here'}</small></div>
         <div className="client-summary-item"><span>Trust checks</span><strong>Ready</strong><small><Activity size={13} /> Engine available</small></div>
       </section>
 
@@ -84,6 +93,7 @@ export function ClientHome() {
           <div className="client-card-icon"><ShieldCheck size={20} /></div>
           <div><span className="client-plan-status">Active plan</span><h3>{subscription.package.name}</h3><p>{subscription.package.description ?? 'Trust decisions for your protected actions.'}</p></div>
           <div className="client-plan-meta"><strong>{subscription.package.requestLimit.toLocaleString()}</strong><span>requests included</span></div>
+          {usage && <div className="client-usage-meter"><div><span>Usage</span><strong>{usage.usagePercentage}%</strong></div><span className="client-usage-track"><span style={{ width: `${Math.min(usage.usagePercentage, 100)}%` }} /></span></div>}
         </section>
       ) : (
         <section className="client-package-grid">
@@ -103,7 +113,7 @@ export function ClientHome() {
       <div className="client-section-heading client-followup-heading"><div><span className="client-eyebrow">After activation</span><h2>Continue your setup</h2></div></div>
       <section className="client-workspace-grid">
         <article className="client-workspace-card"><span className="client-card-icon"><KeyRound size={20} /></span><h3>Create an API key</h3><p>Connect your application securely and keep production credentials under control.</p><Link to="/client/api-keys">Manage API keys <ArrowRight size={14} /></Link></article>
-        <article className="client-workspace-card"><span className="client-card-icon"><ShieldCheck size={20} /></span><h3>Run a trust check</h3><p>Evaluate a sensitive action with network signals before it reaches your system.</p><span className="client-card-muted">Next milestone</span></article>
+        <article className="client-workspace-card"><span className="client-card-icon"><ShieldCheck size={20} /></span><h3>Run a trust check</h3><p>Evaluate a sensitive action with network signals before it reaches your system.</p><Link to="/client/trust-check">Open trust lab <ArrowRight size={14} /></Link></article>
         <article className="client-workspace-card"><span className="client-card-icon"><Activity size={20} /></span><h3>Monitor usage</h3><p>Track request volume and remaining capacity as your integration comes online.</p><span className="client-card-muted">Next milestone</span></article>
       </section>
     </div>

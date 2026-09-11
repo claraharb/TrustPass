@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { ArrowLeft, KeyRound, Save, Trash2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { KeyRound, Save, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/useAuth';
+import { ClientBreadcrumb } from '../../components/common/ClientBreadcrumb';
 import { deleteClientAccount, updateClientAccount } from '../../services/api';
 
 export function ClientAccount() {
@@ -52,7 +53,7 @@ export function ClientAccount() {
     <div className="client-page">
       <div className="client-page-heading">
         <div>
-          <Link className="client-eyebrow" to="/client"><ArrowLeft size={13} /> Client workspace</Link>
+          <ClientBreadcrumb current="Account settings" />
           <h1>Account settings</h1>
           <p>Manage the identity and credentials used to access your TrustPass workspace.</p>
         </div>

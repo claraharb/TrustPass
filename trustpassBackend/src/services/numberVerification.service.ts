@@ -68,6 +68,16 @@ function getNumberVerificationConfig() {
   };
 }
 
+export function isNumberVerificationConfigured() {
+  return Boolean(
+    process.env.NOKIA_NV_CLIENT_ID &&
+    process.env.NOKIA_NV_CLIENT_SECRET &&
+    process.env.NOKIA_NV_REDIRECT_URI &&
+    process.env.NOKIA_NV_AUTHORIZATION_URL &&
+    process.env.NOKIA_NV_TOKEN_URL
+  );
+}
+
 function getNokiaConfig() {
   const apiKey = process.env.NOKIA_RAPIDAPI_KEY;
   const host = process.env.NOKIA_RAPIDAPI_HOST;

@@ -55,37 +55,23 @@ export async function recordApiUsage(
   statusCode: number,
   requestId: string
 ) {
-  return prisma.$transaction(async (tx) => {
-    const subscription = await tx.subscription.findFirst({
-      where: {
-        clientId,
-        isActive: true,
-        endDate: {
-          gte: new Date(),
-        },
-      },
-      include: {
-        package: true,
-      },
-      orderBy: {
-        endDate: "desc",
-      },
-    });
-
-    if (subscription) {
-      await tx.subscription.update({
-        where: {
-          id: subscription.id,
-        },
-        data: {
-          requestsUsed: {
-            increment: 1,
-          },
-        },
-      });
-    }
-
-    const apiUsage = await tx.apiUsage.create({
+  const activeSubscription = await getActiveSubscription(clientId);
+  const operations = [
+    ...(activeSubscription
+      ? [
+          prisma.subscription.update({
+            where: {
+              id: activeSubscription.id,
+            },
+            data: {
+              requestsUsed: {
+                increment: 1,
+              },
+            },
+          }),
+        ]
+      : []),
+    prisma.apiUsage.create({
       data: {
         clientId,
         apiKeyId,
@@ -94,8 +80,9 @@ export async function recordApiUsage(
         statusCode,
         requestId,
       },
-    });
+    }),
+  ];
 
-    return apiUsage;
-  });
+  const results = await prisma.$transaction(operations);
+  return results[results.length - 1];
 }

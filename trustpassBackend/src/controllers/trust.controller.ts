@@ -32,6 +32,7 @@ import {
 
 import {
     createNumberVerificationAuthorizationUrl,
+    isNumberVerificationConfigured,
 } from "../services/numberVerification.service";
 
 
@@ -263,6 +264,19 @@ export async function trustCheck(
         console.log(
             "========================================"
         );
+
+        if (
+            aiDecision.selectedSignals.includes("NUMBER_VERIFICATION") &&
+            !isNumberVerificationConfigured()
+        ) {
+            aiDecision.selectedSignals = aiDecision.selectedSignals.filter(
+                (signal) => signal !== "NUMBER_VERIFICATION"
+            );
+            aiDecision.reason = `${aiDecision.reason} Number Verification is not configured, so the available network signals will be used.`;
+            console.warn(
+                "Number Verification is not configured; continuing with available signals."
+            );
+        }
 
 
         // =========================================================

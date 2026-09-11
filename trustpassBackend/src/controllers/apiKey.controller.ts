@@ -261,8 +261,8 @@ export async function rotateApiKey(
 
         const { rawKey, keyHash, keyPrefix } = generateApiKey();
 
-        const result = await prisma.$transaction(async (tx) => {
-            await tx.apiKey.update({
+        const [, result] = await prisma.$transaction([
+            prisma.apiKey.update({
                 where: {
                     id: apiKeyId,
                 },
@@ -270,9 +270,8 @@ export async function rotateApiKey(
                     status: "REVOKED",
                     revokedAt: new Date(),
                 },
-            });
-
-            return tx.apiKey.create({
+            }),
+            prisma.apiKey.create({
                 data: {
                     clientId,
                     keyPrefix,
@@ -285,8 +284,8 @@ export async function rotateApiKey(
                     status: true,
                     createdAt: true,
                 },
-            });
-        });
+            }),
+        ]);
 
         return res.status(201).json({
             message: "API key rotated successfully",
