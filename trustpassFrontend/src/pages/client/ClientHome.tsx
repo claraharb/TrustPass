@@ -92,7 +92,7 @@ export function ClientHome() {
         <section className="client-plan-active">
           <div className="client-card-icon"><ShieldCheck size={20} /></div>
           <div><span className="client-plan-status">Active plan</span><h3>{subscription.package.name}</h3><p>{subscription.package.description ?? 'Trust decisions for your protected actions.'}</p></div>
-          <div className="client-plan-meta"><strong>{subscription.package.requestLimit.toLocaleString()}</strong><span>requests included</span></div>
+          <div className="client-plan-meta"><strong>{(usage?.remainingRequests ?? (subscription.package.requestLimit - subscription.requestsUsed)).toLocaleString()}/{subscription.package.requestLimit.toLocaleString()}</strong><span>requests left</span></div>
           {usage && <div className="client-usage-meter"><div><span>Usage</span><strong>{usage.usagePercentage}%</strong></div><span className="client-usage-track"><span style={{ width: `${Math.min(usage.usagePercentage, 100)}%` }} /></span></div>}
         </section>
       ) : (

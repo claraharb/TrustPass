@@ -25,7 +25,7 @@ export function ClientLayout() {
             <nav className="client-header-nav" aria-label="Client navigation">
               <Link className="client-header-link" to="/client/trust-check"><ShieldCheck size={15} /> Trust lab</Link>
               <Link className="client-header-link" to="/client/api-keys"><KeyRound size={15} /> API keys</Link>
-              <Link className="client-header-link" to="/client"><Activity size={15} /> Usage</Link>
+              <span className="client-header-link client-header-link-disabled" title="Usage page is coming soon"><Activity size={15} /> Usage <span className="client-header-soon">Soon</span></span>
             </nav>
             <Link className="client-header-profile" to="/client/account">
               <span className="client-header-avatar">{client?.name?.charAt(0).toUpperCase() ?? 'C'}</span>

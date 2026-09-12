@@ -23,3 +23,5 @@ Thumbs.db
 
 # Prisma generated client
 trustpassBackend/src/generated/
+
+doc/02-Environment-Setup.md
