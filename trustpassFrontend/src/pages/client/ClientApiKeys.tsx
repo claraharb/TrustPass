@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Clipboard, KeyRound, Plus, RefreshCw, RotateCw, ShieldAlert, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Clipboard, KeyRound, Plus, RefreshCw, RotateCw, ShieldAlert, X } from 'lucide-react';
+import { ClientBreadcrumb } from '../../components/common/ClientBreadcrumb';
 import {
   createClientApiKey,
   getClientApiKeys,
@@ -90,7 +90,7 @@ export function ClientApiKeys() {
     <div className="client-page">
       <div className="client-page-heading">
         <div>
-          <Link className="client-eyebrow" to="/client"><ArrowLeft size={13} /> Client workspace</Link>
+          <ClientBreadcrumb current="API keys" />
           <h1>API keys</h1>
           <p>Issue and manage credentials for the applications that call your TrustPass protection layer.</p>
         </div>

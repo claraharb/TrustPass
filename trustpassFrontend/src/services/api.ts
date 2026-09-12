@@ -280,3 +280,54 @@ export function rotateClientApiKey(apiKeyId: number) {
     apiKey: NewlyCreatedClientApiKey;
   }>(`/client/api-keys/${apiKeyId}/rotate`, { method: "POST" });
 }
+
+  export interface TrustCheckSignal {
+    signalType: string;
+    source: string;
+    value?: string;
+    riskScore?: number;
+    isPositive?: boolean;
+    details?: string;
+  }
+
+  export interface TrustCheckResult {
+    requestId: string;
+    status: "COMPLETED" | "PENDING";
+    pendingAction?: string;
+    authorizationUrl?: string;
+    assessment?: {
+      actionRiskLevel: string;
+      evidenceRequirements: string[];
+    };
+    aiAgent?: {
+      riskAssessment: string;
+      selectedSignals: string[];
+      additionalEvidenceNeeded: boolean;
+      reason: string;
+    };
+    signals?: TrustCheckSignal[];
+    decision?: {
+      trustScore: number;
+      riskLevel: string;
+      decision: "ALLOW" | "CHALLENGE" | "THROTTLE" | "BLOCK";
+      explanation?: string;
+    };
+    message: string;
+  }
+
+  export function postTrustCheck(
+    apiKey: string,
+    input: {
+      action: string;
+      phoneNumber?: string;
+      ipAddress?: string;
+      userAgent?: string;
+      attemptCount?: number;
+    },
+  ) {
+    return request<TrustCheckResult>("/trust/check", {
+      method: "POST",
+      headers: { "x-api-key": apiKey },
+      body: JSON.stringify(input),
+    });
+  }
