@@ -7,6 +7,8 @@ import {
   checkDeviceRoaming,
 } from "./camara.service";
 
+import { isNumberVerificationBypassed } from "./numberVerification.service";
+
 
 interface NetworkSignal {
   signalType: string;
@@ -17,12 +19,6 @@ interface NetworkSignal {
   details: string;
 }
 
-
-/**
- * ============================================================
- * SIM SWAP
- * ============================================================
- */
 
 export async function collectSimSwapSignal(
   trustRequestId: number,
@@ -79,12 +75,6 @@ export async function collectSimSwapSignal(
 }
 
 
-/**
- * ============================================================
- * DEVICE SWAP
- * ============================================================
- */
-
 export async function collectDeviceSwapSignal(
   trustRequestId: number,
   phoneNumber: string
@@ -139,12 +129,6 @@ export async function collectDeviceSwapSignal(
   return signal;
 }
 
-
-/**
- * ============================================================
- * DEVICE STATUS / REACHABILITY
- * ============================================================
- */
 
 export async function collectDeviceStatusSignal(
   trustRequestId: number,
@@ -207,12 +191,6 @@ export async function collectDeviceStatusSignal(
 }
 
 
-/**
- * ============================================================
- * DEVICE ROAMING
- * ============================================================
- */
-
 export async function collectDeviceRoamingSignal(
   trustRequestId: number,
   phoneNumber: string
@@ -234,12 +212,8 @@ export async function collectDeviceRoamingSignal(
 
 
   /*
-   * Roaming does NOT automatically mean fraud.
-   *
-   * We therefore give it a moderate risk score.
-   *
-   * roaming = true  → 50
-   * roaming = false → 5
+   * Roaming does NOT automatically mean fraud, so it gets a
+   * moderate risk score instead of a high one.
    */
 
   const signal: NetworkSignal = {
@@ -258,12 +232,6 @@ export async function collectDeviceRoamingSignal(
         ? 50
         : 5,
 
-    /*
-     * Not roaming is a positive signal.
-     *
-     * Roaming is neutral/suspicious evidence,
-     * but not automatically fraudulent.
-     */
     isPositive:
       !result.roaming,
 
@@ -289,10 +257,6 @@ export async function collectDeviceRoamingSignal(
 
 
 /**
- * ============================================================
- * NUMBER VERIFICATION
- * ============================================================
- *
  * Saves the result returned by Nokia Number Verification.
  *
  * The actual OAuth/API verification is performed by
@@ -320,13 +284,6 @@ export async function collectNumberVerificationSignal(
     value:
       String(verified),
 
-    /*
-     * A successful Number Verification is a strong
-     * positive trust signal.
-     *
-     * A failed verification significantly increases risk.
-     */
-
     riskScore:
       verified
         ? 5
@@ -350,12 +307,6 @@ export async function collectNumberVerificationSignal(
   return signal;
 }
 
-
-/**
- * ============================================================
- * SAVE RISK SIGNAL
- * ============================================================
- */
 
 async function saveRiskSignal(
   trustRequestId: number,
@@ -391,11 +342,9 @@ async function saveRiskSignal(
 
 
 /**
- * ============================================================
- * AI-SELECTED EVIDENCE ORCHESTRATOR
- * ============================================================
+ * AI-selected evidence orchestrator: runs the network signal
+ * checks the AI Agent selected, and returns whatever succeeds.
  */
-
 export async function collectSelectedEvidence(
 
   trustRequestId: number,
@@ -446,23 +395,49 @@ export async function collectSelectedEvidence(
     switch (signalType) {
 
 
-      // ======================================================
-      // NUMBER VERIFICATION
-      // ======================================================
-
       case "NUMBER_VERIFICATION":
+
+        if (isNumberVerificationBypassed()) {
+
+          // TEMPORARY DEMO BYPASS: mark it verified immediately
+          // instead of requiring the Nokia OAuth flow. See
+          // isNumberVerificationBypassed() for how to turn this off.
+
+          console.log(
+            "📡 NUMBER_VERIFICATION demo bypass is enabled — marking verified=true."
+          );
+
+          try {
+
+            const signal =
+              await collectNumberVerificationSignal(
+                trustRequestId,
+                true
+              );
+
+            signals.push(signal);
+
+          } catch (error) {
+
+            console.error(
+              "❌ NUMBER_VERIFICATION bypass failed:",
+              error
+            );
+
+          }
+
+          break;
+        }
 
         /*
          * Number Verification is intentionally NOT executed
-         * here.
-         *
-         * It requires the Nokia OAuth/consent flow.
+         * here — it requires the Nokia OAuth/consent flow.
          *
          * The Trust Controller detects this signal before
          * calling this orchestrator and returns 202 PENDING.
          *
-         * After the user completes Nokia verification,
-         * the callback saves the result using
+         * After the user completes Nokia verification, the
+         * callback saves the result using
          * collectNumberVerificationSignal().
          */
 
@@ -472,10 +447,6 @@ export async function collectSelectedEvidence(
 
         break;
 
-
-      // ======================================================
-      // SIM SWAP
-      // ======================================================
 
       case "SIM_SWAP":
 
@@ -505,10 +476,6 @@ export async function collectSelectedEvidence(
         break;
 
 
-      // ======================================================
-      // DEVICE STATUS
-      // ======================================================
-
       case "DEVICE_STATUS":
 
         console.log(
@@ -536,10 +503,6 @@ export async function collectSelectedEvidence(
 
         break;
 
-
-      // ======================================================
-      // DEVICE SWAP
-      // ======================================================
 
       case "DEVICE_SWAP":
 
@@ -569,10 +532,6 @@ export async function collectSelectedEvidence(
         break;
 
 
-      // ======================================================
-      // DEVICE ROAMING
-      // ======================================================
-
       case "DEVICE_ROAMING":
 
         console.log(
@@ -601,10 +560,6 @@ export async function collectSelectedEvidence(
         break;
 
 
-      // ======================================================
-      // LOCATION VERIFICATION
-      // ======================================================
-
       case "LOCATION_VERIFICATION":
 
         console.log(
@@ -617,10 +572,6 @@ export async function collectSelectedEvidence(
 
         break;
 
-
-      // ======================================================
-      // UNKNOWN
-      // ======================================================
 
       default:
 

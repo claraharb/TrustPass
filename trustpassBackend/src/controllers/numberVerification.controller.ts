@@ -22,10 +22,6 @@ import {
 } from "../services/trustDecision.service";
 
 
-// ============================================================
-// START NUMBER VERIFICATION
-// ============================================================
-
 /**
  * Standalone Number Verification endpoint.
  *
@@ -97,10 +93,6 @@ export function startNumberVerification(
 }
 
 
-// ============================================================
-// NUMBER VERIFICATION CALLBACK
-// ============================================================
-
 /**
  * Nokia redirects here after OAuth authorization.
  *
@@ -141,10 +133,6 @@ export async function numberVerificationCallback(
     } = req.query;
 
 
-    // =========================================================
-    // 1. Handle authorization errors
-    // =========================================================
-
     if (error) {
 
       return res.status(400).json({
@@ -157,10 +145,6 @@ export async function numberVerificationCallback(
       });
     }
 
-
-    // =========================================================
-    // 2. Validate callback parameters
-    // =========================================================
 
     if (
       typeof code !== "string" ||
@@ -175,10 +159,6 @@ export async function numberVerificationCallback(
     }
 
 
-    // =========================================================
-    // 3. Complete Nokia Number Verification
-    // =========================================================
-
     const verificationResult =
       await handleNumberVerificationCallback(
         code,
@@ -191,10 +171,6 @@ export async function numberVerificationCallback(
       verificationResult
     );
 
-
-    // =========================================================
-    // 4. Find the TrustRequest
-    // =========================================================
 
     const trustRequest =
       await prisma.trustRequest.findUnique({
@@ -221,10 +197,6 @@ export async function numberVerificationCallback(
       });
     }
 
-
-    // =========================================================
-    // 5. Handle duplicate / repeated callbacks
-    // =========================================================
 
     if (
       trustRequest.status !== "PENDING"
@@ -313,10 +285,6 @@ export async function numberVerificationCallback(
     }
 
 
-    // =========================================================
-    // 6. Save NUMBER_VERIFICATION signal
-    // =========================================================
-
     const numberVerificationSignal =
       await collectNumberVerificationSignal(
 
@@ -331,10 +299,6 @@ export async function numberVerificationCallback(
       numberVerificationSignal
     );
 
-
-    // =========================================================
-    // 7. Load AI-selected signals
-    // =========================================================
 
     let selectedSignals: string[] = [];
 
@@ -385,10 +349,6 @@ export async function numberVerificationCallback(
     );
 
 
-    // =========================================================
-    // 8. Collect remaining network evidence
-    // =========================================================
-
     /*
      * NUMBER_VERIFICATION has already been collected.
      *
@@ -417,10 +377,6 @@ export async function numberVerificationCallback(
       );
 
 
-    // =========================================================
-    // 9. Build complete signal set
-    // =========================================================
-
     const signals = [
 
       numberVerificationSignal,
@@ -443,10 +399,6 @@ export async function numberVerificationCallback(
     );
 
 
-    // =========================================================
-    // 10. Trust Engine assessment
-    // =========================================================
-
     const assessment =
       await assessProtectedAction({
 
@@ -466,10 +418,6 @@ export async function numberVerificationCallback(
           undefined,
       });
 
-
-    // =========================================================
-    // 11. Calculate final TrustPass decision
-    // =========================================================
 
     const decisionResult =
       calculateTrustDecision({
@@ -503,10 +451,6 @@ export async function numberVerificationCallback(
     );
 
 
-    // =========================================================
-    // 12. Save final TrustDecision
-    // =========================================================
-
     const savedDecision =
       await saveTrustDecision(
 
@@ -515,10 +459,6 @@ export async function numberVerificationCallback(
         decisionResult
       );
 
-
-    // =========================================================
-    // 13. Return completed result
-    // =========================================================
 
     return res.status(200).json({
 
@@ -530,11 +470,6 @@ export async function numberVerificationCallback(
       status:
         "COMPLETED",
 
-
-      // -------------------------------------------------------
-      // Number Verification
-      // -------------------------------------------------------
-
       numberVerification: {
 
         verified:
@@ -544,11 +479,6 @@ export async function numberVerificationCallback(
           verificationResult.phoneNumber,
       },
 
-
-      // -------------------------------------------------------
-      // Protected action assessment
-      // -------------------------------------------------------
-
       assessment: {
 
         actionRiskLevel:
@@ -557,11 +487,6 @@ export async function numberVerificationCallback(
         evidenceRequirements:
           assessment.evidenceRequirements,
       },
-
-
-      // -------------------------------------------------------
-      // AI-selected evidence
-      // -------------------------------------------------------
 
       aiAgent: {
 
@@ -574,17 +499,7 @@ export async function numberVerificationCallback(
           ),
       },
 
-
-      // -------------------------------------------------------
-      // Risk signals
-      // -------------------------------------------------------
-
       signals,
-
-
-      // -------------------------------------------------------
-      // Final decision
-      // -------------------------------------------------------
 
       decision: {
 
@@ -600,7 +515,6 @@ export async function numberVerificationCallback(
         explanation:
           savedDecision.explanation,
       },
-
 
       message:
         "Trust assessment completed after Number Verification.",

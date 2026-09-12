@@ -78,6 +78,20 @@ export function isNumberVerificationConfigured() {
   );
 }
 
+/**
+ * TEMPORARY DEMO BYPASS.
+ *
+ * When enabled, Number Verification is marked verified=true
+ * immediately instead of redirecting through Nokia's OAuth flow.
+ * This exists only to keep demos working without depending on a
+ * live tunnel; remove NUMBER_VERIFICATION_DEMO_BYPASS from .env
+ * (or set it to anything other than "true") to go back to the
+ * real Nokia flow.
+ */
+export function isNumberVerificationBypassed() {
+  return process.env.NUMBER_VERIFICATION_DEMO_BYPASS === "true";
+}
+
 function getNokiaConfig() {
   const apiKey = process.env.NOKIA_RAPIDAPI_KEY;
   const host = process.env.NOKIA_RAPIDAPI_HOST;
@@ -344,10 +358,9 @@ export async function handleNumberVerificationCallback(
   state: string
 ) {
   /*
-   * Check whether this state has already completed.
-   *
-   * This prevents duplicate browser/network callbacks
-   * from appearing as failed verifications.
+   * Check whether this state has already completed. This
+   * prevents duplicate browser/network callbacks from
+   * appearing as failed verifications.
    */
   const completed =
     completedVerifications.get(state);
@@ -422,8 +435,8 @@ export async function handleNumberVerificationCallback(
     };
 
     /*
-     * Save the completed result temporarily so
-     * duplicate callbacks can return the same answer.
+     * Save the completed result temporarily so duplicate
+     * callbacks can return the same answer.
      */
     completedVerifications.set(
       state,
@@ -442,8 +455,8 @@ export async function handleNumberVerificationCallback(
     };
   } finally {
     /*
-     * The OAuth state is no longer needed after
-     * the verification has completed.
+     * The OAuth state is no longer needed after the
+     * verification has completed.
      */
     verificationSessions.delete(state);
   }

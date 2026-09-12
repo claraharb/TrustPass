@@ -49,20 +49,12 @@ export async function analyzeOtpActivity(
     attemptCount ?? 1
   );
 
-  // =========================================================
-  // DEFAULT: NORMAL OTP ACTIVITY
-  // =========================================================
-
   let isBombing = false;
 
   let riskScore = 10;
 
   let details =
     "OTP request frequency appears normal.";
-
-  // =========================================================
-  // SEVERE OTP BOMBING
-  // =========================================================
 
   if (totalAttempts >= 10) {
     isBombing = true;
@@ -71,43 +63,26 @@ export async function analyzeOtpActivity(
 
     details =
       "Severe OTP bombing detected: a very high number of OTP requests occurred within a short period.";
-  }
 
-  // =========================================================
-  // OTP BOMBING
-  // =========================================================
-
-  else if (totalAttempts >= 5) {
+  } else if (totalAttempts >= 5) {
     isBombing = true;
 
     riskScore = 70;
 
     details =
       "OTP bombing detected: repeated OTP requests occurred within a short period.";
-  }
 
-  // =========================================================
-  // SUSPICIOUS OTP ACTIVITY
-  // =========================================================
-
-  else if (totalAttempts >= 3) {
-    /*
-     * This is suspicious activity, but not strong enough
-     * to classify as full OTP bombing.
-     */
+  } else if (totalAttempts >= 3) {
+    // Suspicious, but not strong enough to classify as full
+    // OTP bombing.
     isBombing = false;
 
     riskScore = 40;
 
     details =
       "Suspicious OTP activity: multiple OTP requests occurred within a short period.";
-  }
 
-  // =========================================================
-  // NORMAL ACTIVITY
-  // =========================================================
-
-  else {
+  } else {
     isBombing = false;
 
     riskScore = 10;
@@ -116,16 +91,10 @@ export async function analyzeOtpActivity(
       "OTP request frequency appears normal.";
   }
 
-  // =========================================================
-  // POSITIVE / NEGATIVE EVIDENCE
-  // =========================================================
-
   /*
    * riskScore < 40 means the activity is considered
-   * positive/reassuring evidence.
-   *
-   * riskScore >= 40 means the activity is suspicious
-   * or malicious and therefore negative evidence.
+   * positive/reassuring evidence; riskScore >= 40 means it's
+   * suspicious or malicious and therefore negative evidence.
    */
   const isPositive = riskScore < 40;
 

@@ -37,29 +37,10 @@ const client =
 
 
 /**
- * ============================================================
- * TRUSTPASS AI AGENT
- * ============================================================
- *
- * The AI Agent analyzes the transaction and determines
- * which telecom/network signals should be collected.
- *
- * The Agent does NOT directly make the final
- * ALLOW / CHALLENGE / BLOCK decision.
- *
- * Instead:
- *
- * Request
- *    ↓
- * AI Agent
- *    ↓
- * Select relevant evidence
- *    ↓
- * CAMARA APIs
- *    ↓
- * Trust Engine
- *    ↓
- * Final decision
+ * The AI Agent analyzes the transaction and determines which
+ * telecom/network signals should be collected. It does NOT
+ * make the final ALLOW / CHALLENGE / BLOCK decision — it only
+ * selects evidence for the deterministic Trust Engine to use.
  */
 
 export async function runTrustAgent(
@@ -489,14 +470,8 @@ false
       error
     );
 
-
-    /*
-     * If Gemini is unavailable,
-     * rate-limited, or returns invalid data,
-     * TrustPass continues using deterministic
-     * fallback logic.
-     */
-
+    // If Gemini is unavailable, rate-limited, or returns
+    // invalid data, fall back to deterministic logic.
     return fallbackAgentDecision(
       input
     );
@@ -505,11 +480,7 @@ false
 
 
 /**
- * ============================================================
- * CLEAN GEMINI RESPONSE
- * ============================================================
- *
- * Removes accidental markdown code fences.
+ * Removes accidental markdown code fences from a Gemini response.
  */
 
 function cleanJsonResponse(
@@ -538,10 +509,6 @@ function cleanJsonResponse(
 
 
 /**
- * ============================================================
- * VALIDATE AI RESPONSE
- * ============================================================
- *
  * Never blindly trust an LLM response.
  */
 
@@ -582,10 +549,6 @@ function validateAgentDecision(
   }
 
 
-  // ==========================================================
-  // VALIDATE SELECTED SIGNALS
-  // ==========================================================
-
   if (
     !Array.isArray(
       decision.selectedSignals
@@ -597,12 +560,6 @@ function validateAgentDecision(
     );
   }
 
-
-  /*
-   * TrustPass should not allow the AI to select
-   * an excessive number of network APIs.
-   */
-
   if (
     decision.selectedSignals.length > 4
   ) {
@@ -611,11 +568,6 @@ function validateAgentDecision(
       "AI Agent selected too many network signals"
     );
   }
-
-
-  /*
-   * Validate every selected signal.
-   */
 
   for (
     const signal
@@ -635,10 +587,6 @@ function validateAgentDecision(
   }
 
 
-  // ==========================================================
-  // VALIDATE ADDITIONAL EVIDENCE FLAG
-  // ==========================================================
-
   if (
     typeof decision.additionalEvidenceNeeded !==
     "boolean"
@@ -648,11 +596,6 @@ function validateAgentDecision(
       "AI Agent returned invalid additionalEvidenceNeeded"
     );
   }
-
-
-  // ==========================================================
-  // VALIDATE REASON
-  // ==========================================================
 
   if (
     typeof decision.reason !==
@@ -667,20 +610,11 @@ function validateAgentDecision(
   }
 
 
-  // ==========================================================
-  // CONSISTENCY CHECK
-  // ==========================================================
-
-  /*
-   * A LOW-risk transaction should not request
-   * additional evidence unless there is a specific
-   * suspicious context.
-   *
-   * Since the AI response does not explicitly provide
-   * a separate suspicious flag, we reject this combination
-   * and allow the deterministic fallback to handle it.
-   */
-
+  // A LOW-risk transaction should not request additional
+  // evidence unless there is a specific suspicious context.
+  // The AI response doesn't provide a separate suspicious
+  // flag, so this combination is rejected and left to the
+  // deterministic fallback instead.
   if (
     decision.riskAssessment === "LOW" &&
     decision.additionalEvidenceNeeded === true
@@ -694,11 +628,7 @@ function validateAgentDecision(
 
 
 /**
- * ============================================================
- * FALLBACK AI LOGIC
- * ============================================================
- *
- * Used when Gemini is unavailable,
+ * Deterministic fallback used when Gemini is unavailable,
  * rate-limited, or returns invalid data.
  */
 
@@ -709,11 +639,6 @@ function fallbackAgentDecision(
   console.log(
     "⚠️ Using TrustPass AI fallback logic"
   );
-
-
-  // ==========================================================
-  // OTP REQUEST
-  // ==========================================================
 
   if (
     input.action ===
@@ -783,11 +708,6 @@ function fallbackAgentDecision(
     };
   }
 
-
-  // ==========================================================
-  // LOGIN
-  // ==========================================================
-
   if (
     input.action ===
     "LOGIN"
@@ -806,12 +726,7 @@ function fallbackAgentDecision(
         "SIM_SWAP",
       ];
 
-
-      /*
-       * High-risk login gets additional
-       * roaming context.
-       */
-
+      // High-risk login gets additional roaming context.
       if (
         input.actionRiskLevel ===
         "HIGH"
@@ -849,11 +764,6 @@ function fallbackAgentDecision(
     };
   }
 
-
-  // ==========================================================
-  // GENERIC HIGH-RISK ACTION
-  // ==========================================================
-
   if (
     input.actionRiskLevel ===
     "HIGH"
@@ -886,11 +796,6 @@ function fallbackAgentDecision(
         "AI service unavailable. TrustPass selected conservative telecom and device-context evidence for the high-risk action.",
     };
   }
-
-
-  // ==========================================================
-  // GENERIC FALLBACK
-  // ==========================================================
 
   return {
 

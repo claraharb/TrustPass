@@ -29,10 +29,6 @@ export interface TrustDecisionResult {
   explanation: string;
 }
 
-// ============================================================
-// SIGNAL WEIGHTS
-// ============================================================
-
 const SIGNAL_WEIGHTS: Record<string, number> = {
   SIM_SWAP: 0.30,
   DEVICE_SWAP: 0.25,
@@ -40,35 +36,23 @@ const SIGNAL_WEIGHTS: Record<string, number> = {
   NUMBER_VERIFICATION: 0.15,
   LOCATION_VERIFICATION: 0.15,
 
-  // Device roaming is contextual evidence.
-  // It should have less influence than direct fraud indicators.
+  // Device roaming is contextual evidence, so it carries less
+  // weight than direct fraud indicators.
   DEVICE_ROAMING: 0.10,
 
   OTP_BOMBING: 0.35,
 };
-
-// ============================================================
-// CALCULATE TRUST DECISION
-// ============================================================
 
 export function calculateTrustDecision(
   input: DecisionInput
 ): TrustDecisionResult {
   let score = 100;
 
-  // =========================================================
-  // 1. BASE ACTION RISK
-  // =========================================================
-
   if (input.actionRiskLevel === "HIGH") {
     score -= 10;
   } else if (input.actionRiskLevel === "MEDIUM") {
     score -= 5;
   }
-
-  // =========================================================
-  // 2. SEPARATE POSITIVE AND NEGATIVE SIGNALS
-  // =========================================================
 
   const negativeSignals = input.signals.filter(
     (signal) => !signal.isPositive
@@ -78,19 +62,13 @@ export function calculateTrustDecision(
     (signal) => signal.isPositive
   );
 
-  // =========================================================
-  // 3. APPLY SIGNAL WEIGHTS
-  // =========================================================
-
   for (const signal of input.signals) {
     const weight =
       SIGNAL_WEIGHTS[signal.signalType] ?? 0.10;
 
     if (signal.isPositive) {
-      /*
-       * Positive evidence provides some reassurance,
-       * but deliberately has limited influence.
-       */
+      // Positive evidence provides some reassurance, but
+      // deliberately has limited influence on the score.
       const positiveContribution = Math.round(
         (100 - signal.riskScore) *
           weight *
@@ -99,9 +77,6 @@ export function calculateTrustDecision(
 
       score += positiveContribution;
     } else {
-      /*
-       * Negative evidence has the main influence.
-       */
       const negativeContribution = Math.round(
         signal.riskScore * weight
       );
@@ -109,10 +84,6 @@ export function calculateTrustDecision(
       score -= negativeContribution;
     }
   }
-
-  // =========================================================
-  // 4. IDENTIFY NEGATIVE SIGNAL TYPES
-  // =========================================================
 
   const negativeSignalTypes = new Set(
     negativeSignals.map(
@@ -132,13 +103,6 @@ export function calculateTrustDecision(
   const hasNegativeOtpBombing =
     negativeSignalTypes.has("OTP_BOMBING");
 
-  // =========================================================
-  // 5. COMBINATION RISK
-  // =========================================================
-
-  /*
-   * SIM Swap + OTP Bombing
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeOtpBombing
@@ -146,9 +110,6 @@ export function calculateTrustDecision(
     score -= 10;
   }
 
-  /*
-   * SIM Swap + Device Swap
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceSwap
@@ -156,9 +117,6 @@ export function calculateTrustDecision(
     score -= 10;
   }
 
-  /*
-   * SIM Swap + Device Swap + OTP Bombing
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceSwap &&
@@ -167,13 +125,8 @@ export function calculateTrustDecision(
     score -= 10;
   }
 
-  /*
-   * SIM Swap + Device Roaming
-   *
-   * Roaming alone is not considered fraud.
-   * However, roaming combined with a SIM swap
-   * increases account-takeover suspicion.
-   */
+  // Roaming alone is not considered fraud, but combined with a
+  // SIM swap it increases account-takeover suspicion.
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceRoaming
@@ -181,12 +134,8 @@ export function calculateTrustDecision(
     score -= 5;
   }
 
-  /*
-   * Device Swap + Device Roaming
-   *
-   * A device change while roaming provides
-   * additional contextual risk evidence.
-   */
+  // A device change while roaming provides additional
+  // contextual risk evidence.
   if (
     hasNegativeDeviceSwap &&
     hasNegativeDeviceRoaming
@@ -194,15 +143,8 @@ export function calculateTrustDecision(
     score -= 5;
   }
 
-  // =========================================================
-  // 6. HIGH-RISK ACTION + SIGNIFICANT SIM SWAP
-  // =========================================================
-
-  /*
-   * A significant SIM swap during a HIGH-risk action
-   * cannot result in ALLOW.
-   */
-
+  // A significant SIM swap during a HIGH-risk action cannot
+  // result in ALLOW, so cap the score in the CHALLENGE range.
   if (
     input.actionRiskLevel === "HIGH" &&
     hasNegativeSimSwap
@@ -217,16 +159,9 @@ export function calculateTrustDecision(
       simSwapSignal &&
       simSwapSignal.riskScore >= 40
     ) {
-      /*
-       * Cap the score in the CHALLENGE range.
-       */
       score = Math.min(score, 59);
     }
   }
-
-  /*
-   * HIGH-risk action + OTP bombing
-   */
 
   if (
     input.actionRiskLevel === "HIGH" &&
@@ -242,24 +177,12 @@ export function calculateTrustDecision(
       otpBombingSignal &&
       otpBombingSignal.riskScore >= 40
     ) {
-      /*
-       * Keep the score in the CHALLENGE range.
-       */
       score = Math.min(score, 59);
     }
   }
 
-  // =========================================================
-  // 7. STRONG FRAUD COMBINATION
-  // =========================================================
-
-  /*
-   * SIM Swap + Device Swap + OTP Bombing
-   *
-   * Multiple independent fraud indicators
-   * are considered CRITICAL.
-   */
-
+  // Multiple independent fraud indicators together are
+  // considered CRITICAL.
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceSwap &&
@@ -268,18 +191,10 @@ export function calculateTrustDecision(
     score = Math.min(score, 29);
   }
 
-  // =========================================================
-  // 8. CLAMP SCORE
-  // =========================================================
-
   score = Math.max(
     0,
     Math.min(100, score)
   );
-
-  // =========================================================
-  // 9. DETERMINE RISK LEVEL
-  // =========================================================
 
   let riskLevel: FinalRiskLevel;
 
@@ -293,10 +208,6 @@ export function calculateTrustDecision(
     riskLevel = "CRITICAL";
   }
 
-  // =========================================================
-  // 10. DETERMINE FINAL DECISION
-  // =========================================================
-
   let decision: TrustDecisionType;
 
   if (
@@ -309,10 +220,6 @@ export function calculateTrustDecision(
   } else {
     decision = "BLOCK";
   }
-
-  // =========================================================
-  // 11. BUILD EXPLANATION
-  // =========================================================
 
   const explanationParts: string[] = [];
 
@@ -328,10 +235,6 @@ export function calculateTrustDecision(
     );
   }
 
-  // ---------------------------------------------------------
-  // Negative evidence
-  // ---------------------------------------------------------
-
   if (negativeSignals.length > 0) {
     explanationParts.push(
       `Negative signals detected: ${negativeSignals
@@ -342,10 +245,6 @@ export function calculateTrustDecision(
         .join(", ")}.`
     );
   }
-
-  // ---------------------------------------------------------
-  // Positive evidence
-  // ---------------------------------------------------------
 
   if (positiveSignals.length > 0) {
     explanationParts.push(
@@ -358,13 +257,6 @@ export function calculateTrustDecision(
     );
   }
 
-  // =========================================================
-  // 12. COMBINATION EXPLANATIONS
-  // =========================================================
-
-  /*
-   * SIM Swap + OTP Bombing
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeOtpBombing
@@ -374,9 +266,6 @@ export function calculateTrustDecision(
     );
   }
 
-  /*
-   * SIM Swap + Device Swap
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceSwap
@@ -386,9 +275,6 @@ export function calculateTrustDecision(
     );
   }
 
-  /*
-   * SIM Swap + Device Swap + OTP Bombing
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceSwap &&
@@ -399,9 +285,6 @@ export function calculateTrustDecision(
     );
   }
 
-  /*
-   * SIM Swap + Device Roaming
-   */
   if (
     hasNegativeSimSwap &&
     hasNegativeDeviceRoaming
@@ -411,9 +294,6 @@ export function calculateTrustDecision(
     );
   }
 
-  /*
-   * Device Swap + Device Roaming
-   */
   if (
     hasNegativeDeviceSwap &&
     hasNegativeDeviceRoaming
@@ -423,18 +303,9 @@ export function calculateTrustDecision(
     );
   }
 
-  // =========================================================
-  // 13. CHALLENGE EXPLANATION
-  // =========================================================
-
-  /*
-   * Only explain "additional verification" when the
-   * actual final decision is CHALLENGE.
-   *
-   * This prevents a BLOCK response from containing
-   * contradictory challenge language.
-   */
-
+  // Only explain "additional verification" when the final
+  // decision is actually CHALLENGE, so a BLOCK response never
+  // contains contradictory challenge language.
   if (
     decision === "CHALLENGE" &&
     input.actionRiskLevel === "HIGH" &&
@@ -456,17 +327,9 @@ export function calculateTrustDecision(
     }
   }
 
-  // =========================================================
-  // 14. FINAL SCORE
-  // =========================================================
-
   explanationParts.push(
     `Final trust score: ${score}/100.`
   );
-
-  // =========================================================
-  // 15. FINAL RECOMMENDATION
-  // =========================================================
 
   if (decision === "ALLOW") {
     explanationParts.push(
@@ -482,10 +345,6 @@ export function calculateTrustDecision(
     );
   }
 
-  // =========================================================
-  // 16. RETURN RESULT
-  // =========================================================
-
   return {
     trustScore: score,
     riskLevel,
@@ -495,18 +354,10 @@ export function calculateTrustDecision(
   };
 }
 
-// ============================================================
-// SAVE TRUST DECISION
-// ============================================================
-
 export async function saveTrustDecision(
   trustRequestId: number,
   result: TrustDecisionResult
 ) {
-  // ----------------------------------------------------------
-  // 1. Check whether a decision already exists
-  // ----------------------------------------------------------
-
   const existingDecision =
     await prisma.trustDecision.findUnique({
       where: {
@@ -521,10 +372,6 @@ export async function saveTrustDecision(
 
     return existingDecision;
   }
-
-  // ----------------------------------------------------------
-  // 2. Create the decision
-  // ----------------------------------------------------------
 
   try {
     const decision =
@@ -546,10 +393,6 @@ export async function saveTrustDecision(
         },
       });
 
-    // --------------------------------------------------------
-    // 3. Mark TrustRequest as completed
-    // --------------------------------------------------------
-
     await prisma.trustRequest.update({
       where: {
         id: trustRequestId,
@@ -567,10 +410,9 @@ export async function saveTrustDecision(
 
   } catch (error: any) {
 
-    // --------------------------------------------------------
-    // 4. Handle concurrent callback race
-    // --------------------------------------------------------
-
+    // A concurrent callback may have created the decision
+    // between the check above and this insert; if so, return
+    // that instead of failing.
     if (error?.code === "P2002") {
       console.log(
         `🛡️ Concurrent callback detected for TrustRequest ${trustRequestId}.`

@@ -43,11 +43,6 @@ function getNokiaConfig() {
 }
 
 
-/**
- * ============================================================
- * SIM SWAP
- * ============================================================
- */
 export async function checkSimSwap(
   phoneNumber: string,
   maxAge: number = 240
@@ -127,10 +122,6 @@ export async function checkSimSwap(
 
 
 /**
- * ============================================================
- * DEVICE SWAP
- * ============================================================
- *
  * Checks whether the SIM associated with the phone number
  * was recently moved to another physical device.
  */
@@ -213,12 +204,8 @@ export async function checkDeviceSwap(
 
 
 /**
- * ============================================================
- * DEVICE REACHABILITY / DEVICE STATUS
- * ============================================================
- *
- * Checks whether the device is currently reachable
- * through the mobile network.
+ * Checks whether the device is currently reachable through
+ * the mobile network.
  */
 export async function checkDeviceReachability(
   phoneNumber: string
@@ -307,14 +294,9 @@ export async function checkDeviceReachability(
 
 
 /**
- * ============================================================
- * DEVICE ROAMING STATUS
- * ============================================================
- *
  * Checks whether the device is currently roaming.
  *
- * Nokia Device Roaming Status Retrieve v1.1
- *
+ * Nokia Device Roaming Status Retrieve v1.1 sandbox numbers:
  * +99999991000 → roaming
  * +99999991001 → not roaming
  */
