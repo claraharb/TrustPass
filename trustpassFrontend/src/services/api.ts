@@ -140,10 +140,19 @@ export async function registerClient(
   return client;
 }
 
-export function logoutClient() {
-  localStorage.removeItem(CLIENT_TOKEN_KEY);
-  localStorage.removeItem(CLIENT_SESSION_KEY);
-  window.dispatchEvent(new Event("trustpass:session-changed"));
+export async function logoutClient() {
+  try {
+    const token = getClientToken();
+    if (token) {
+      await request("/auth/client/logout", { method: "POST" });
+    }
+  } catch (error) {
+    console.error("Server logout failed, clearing local session anyway", error);
+  } finally {
+    localStorage.removeItem(CLIENT_TOKEN_KEY);
+    localStorage.removeItem(CLIENT_SESSION_KEY);
+    window.dispatchEvent(new Event("trustpass:session-changed"));
+  }
 }
 
 export function getAdminDashboard(range: "7d" | "30d" | "90d") {
@@ -193,6 +202,7 @@ export interface ClientPackage {
   price: string | number;
   durationDays: number;
   features: string;
+  isActive?: boolean;
 }
 
 export interface ClientSubscription {
@@ -232,6 +242,40 @@ export interface NewlyCreatedClientApiKey extends ClientApiKey {
 
 export function getClientPackages() {
   return request<{ packages: ClientPackage[] }>("/packages");
+}
+
+export function createAdminPackage(input: {
+  name: string;
+  description?: string;
+  requestLimit: number;
+  price: number;
+  durationDays: number;
+  features: string;
+}) {
+  return request<{ message: string; package: ClientPackage }>("/admin/packages", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateAdminPackage(packageId: number, input: Partial<{
+  name: string;
+  description: string;
+  requestLimit: number;
+  price: number;
+  durationDays: number;
+  features: string;
+}>) {
+  return request<{ message: string; package: ClientPackage }>(`/admin/packages/${packageId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deactivateAdminPackage(packageId: number) {
+  return request<{ message: string; package: ClientPackage }>(`/admin/packages/${packageId}/deactivate`, {
+    method: "PATCH",
+  });
 }
 
 export function getCurrentClientSubscription() {
@@ -279,6 +323,24 @@ export function rotateClientApiKey(apiKeyId: number) {
     oldApiKeyId: number;
     apiKey: NewlyCreatedClientApiKey;
   }>(`/client/api-keys/${apiKeyId}/rotate`, { method: "POST" });
+}
+
+export function testApiKeyValidation(apiKey: string) {
+  return request<{
+    message: string;
+    apiKey: { id: number; keyPrefix: string; status: string };
+    client: { id: number };
+  }>(
+    "/client/api-keys/test-validation",
+    { headers: { "x-api-key": apiKey } }
+  );
+}
+
+export function testApiKeyUsage(apiKey: string) {
+  return request<{ message: string; usage: unknown }>(
+    "/client/api-keys/test-usage",
+    { headers: { "x-api-key": apiKey } }
+  );
 }
 
   export interface TrustCheckSignal {
@@ -331,3 +393,8 @@ export function rotateClientApiKey(apiKeyId: number) {
       body: JSON.stringify(input),
     });
   }
+
+  export function getNumberVerificationCallback(code: string, state: string) {
+    return request<TrustCheckResult>(`/camara/number-verification/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+  }
+

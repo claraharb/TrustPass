@@ -15,11 +15,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     const handleUnauthorized = () => {
       if (window.location.pathname.startsWith('/client')) {
-        logoutClient();
+        void logoutClient().then(syncSession);
       } else {
         logoutAdmin();
+        syncSession();
       }
-      syncSession();
     };
 
     window.addEventListener('storage', syncSession);
@@ -39,8 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOutClient = () => {
-    logoutClient();
-    setClient(null);
+    void logoutClient().then(() => setClient(null));
   };
 
   return (

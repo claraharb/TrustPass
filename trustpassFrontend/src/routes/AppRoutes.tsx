@@ -2,8 +2,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { AdminDashboard } from "../pages/admin/AdminDashboard";
 import { AdminLogin } from "../pages/admin/AdminLogin";
-import { BlankPage } from "../pages/admin/BlankPage";
+import { UnavailablePage } from "../pages/common/UnavailablePage";
 import { AdminClients } from "../pages/admin/AdminClients";
+import { AdminPackages } from "../pages/admin/AdminPackages";
 import {
   RedirectAuthenticatedAdmin,
   RedirectAuthenticatedClient,
@@ -17,6 +18,7 @@ import { ClientHome } from "../pages/client/ClientHome";
 import { ClientApiKeys } from "../pages/client/ClientApiKeys";
 import { ClientAccount } from "../pages/client/ClientAccount";
 import { ClientTrustCheck } from "../pages/client/ClientTrustCheck";
+import { NumberVerificationCallback } from "../pages/client/NumberVerificationCallback";
 
 export default function AppRoutes() {
   return (
@@ -30,14 +32,14 @@ export default function AppRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="clients" element={<AdminClients />} />
-          <Route path="packages" element={<BlankPage />} />
-          <Route path="subscriptions" element={<BlankPage />} />
-          <Route path="apis" element={<BlankPage />} />
-          <Route path="api-usage" element={<BlankPage />} />
-          <Route path="fraud" element={<BlankPage />} />
-          <Route path="ai-policies" element={<BlankPage />} />
-          <Route path="transactions" element={<BlankPage />} />
-          <Route path="reports" element={<BlankPage />} />
+          <Route path="packages" element={<AdminPackages />} />
+          <Route path="subscriptions" element={<UnavailablePage />} />
+          <Route path="apis" element={<UnavailablePage />} />
+          <Route path="api-usage" element={<UnavailablePage />} />
+          <Route path="fraud" element={<UnavailablePage />} />
+          <Route path="ai-policies" element={<UnavailablePage />} />
+          <Route path="transactions" element={<UnavailablePage />} />
+          <Route path="reports" element={<UnavailablePage />} />
         </Route>
       </Route>
 
@@ -51,6 +53,9 @@ export default function AppRoutes() {
           <Route index element={<ClientHome />} />
           <Route path="api-keys" element={<ClientApiKeys />} />
           <Route path="trust-check" element={<ClientTrustCheck />} />
+          <Route path="trust-check/callback" element={<NumberVerificationCallback />} />
+          <Route path="protected-actions" element={<UnavailablePage />} />
+          <Route path="history" element={<UnavailablePage />} />
           <Route path="account" element={<ClientAccount />} />
         </Route>
       </Route>
