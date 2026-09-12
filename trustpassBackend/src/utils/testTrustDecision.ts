@@ -7,10 +7,6 @@ function main() {
   console.log("TrustPass Trust Decision Test");
   console.log("========================================");
 
-  // =========================================================
-  // 1. LEGITIMATE REQUEST
-  // =========================================================
-
   const legitimate = calculateTrustDecision({
     actionRiskLevel: "HIGH",
 
@@ -52,10 +48,6 @@ function main() {
     )
   );
 
-  // =========================================================
-  // 2. SUSPICIOUS REQUEST
-  // =========================================================
-
   const suspicious = calculateTrustDecision({
     actionRiskLevel: "HIGH",
 
@@ -84,10 +76,6 @@ function main() {
       2
     )
   );
-
-  // =========================================================
-  // 3. FRAUDULENT REQUEST
-  // =========================================================
 
   const fraudulent = calculateTrustDecision({
     actionRiskLevel: "HIGH",

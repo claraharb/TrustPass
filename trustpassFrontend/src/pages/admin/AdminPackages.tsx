@@ -14,7 +14,6 @@ export function AdminPackages() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<ClientPackage | null>(null);

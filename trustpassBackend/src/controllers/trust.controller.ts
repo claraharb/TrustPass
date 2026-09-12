@@ -33,6 +33,7 @@ import {
 import {
     createNumberVerificationAuthorizationUrl,
     isNumberVerificationConfigured,
+    isNumberVerificationBypassed,
 } from "../services/numberVerification.service";
 
 
@@ -59,10 +60,6 @@ export async function trustCheck(
 ) {
     try {
 
-        // =========================================================
-        // 1. Validate API key
-        // =========================================================
-
         const apiKey = req.headers["x-api-key"];
 
         if (
@@ -84,11 +81,6 @@ export async function trustCheck(
             });
         }
 
-
-        // =========================================================
-        // 2. Check subscription and request limit
-        // =========================================================
-
         const usageCheck =
             await checkRequestLimit(
                 validatedKey.clientId
@@ -102,11 +94,6 @@ export async function trustCheck(
                     usageCheck.remainingRequests,
             });
         }
-
-
-        // =========================================================
-        // 3. Validate request body
-        // =========================================================
 
         const parsed =
             trustCheckSchema.safeParse(
@@ -130,11 +117,6 @@ export async function trustCheck(
             attemptCount,
         } = parsed.data;
 
-
-        // =========================================================
-        // 4. Find protected action
-        // =========================================================
-
         const protectedAction =
             await prisma.protectedAction.findFirst({
                 where: {
@@ -156,21 +138,11 @@ export async function trustCheck(
             });
         }
 
-
-        // =========================================================
-        // 5. Generate unique TrustPass request ID
-        // =========================================================
-
         const requestId =
             `TR-${Date.now()}-${Math.random()
                 .toString(36)
                 .substring(2, 8)
                 .toUpperCase()}`;
-
-
-        // =========================================================
-        // 6. Create TrustRequest
-        // =========================================================
 
         const trustRequest =
             await prisma.trustRequest.create({
@@ -194,11 +166,6 @@ export async function trustCheck(
                 },
             });
 
-
-        // =========================================================
-        // 7. Trust Engine assesses protected action
-        // =========================================================
-
         const assessment =
             await assessProtectedAction({
                 protectedActionId:
@@ -210,12 +177,6 @@ export async function trustCheck(
 
                 userAgent,
             });
-
-
-        // =========================================================
-        // 8. TrustPass AI Agent decides which
-        //    network signals should be collected
-        // =========================================================
 
         console.log(
             "========================================"
@@ -278,11 +239,6 @@ export async function trustCheck(
             );
         }
 
-
-        // =========================================================
-        // 8.1. Persist AI-selected signals
-        // =========================================================
-
         await prisma.trustRequest.update({
             where: {
                 id:
@@ -297,15 +253,11 @@ export async function trustCheck(
             },
         });
 
-
-        // =========================================================
-        // 8.5. Handle Number Verification if selected by AI
-        // =========================================================
-
         if (
             aiDecision.selectedSignals.includes(
                 "NUMBER_VERIFICATION"
-            )
+            ) &&
+            !isNumberVerificationBypassed()
         ) {
 
             if (!phoneNumber) {
@@ -320,18 +272,12 @@ export async function trustCheck(
                 });
             }
 
-
             const numberVerification =
                 createNumberVerificationAuthorizationUrl(
                     phoneNumber,
 
                     trustRequest.id
                 );
-
-
-            // -----------------------------------------------------
-            // Save Nokia OAuth state
-            // -----------------------------------------------------
 
             await prisma.trustRequest.update({
 
@@ -350,11 +296,6 @@ export async function trustCheck(
                 },
             });
 
-
-            // -----------------------------------------------------
-            // Return PENDING
-            // -----------------------------------------------------
-
             return res.status(202).json({
 
                 requestId:
@@ -369,11 +310,6 @@ export async function trustCheck(
                 authorizationUrl:
                     numberVerification.authorizationUrl,
 
-
-                // -------------------------------------------------
-                // Protected action assessment
-                // -------------------------------------------------
-
                 assessment: {
 
                     actionRiskLevel:
@@ -382,11 +318,6 @@ export async function trustCheck(
                     evidenceRequirements:
                         assessment.evidenceRequirements,
                 },
-
-
-                // -------------------------------------------------
-                // AI Agent information
-                // -------------------------------------------------
 
                 aiAgent: {
 
@@ -403,17 +334,10 @@ export async function trustCheck(
                         aiDecision.reason,
                 },
 
-
                 message:
                     "Number Verification is required to complete the trust assessment.",
             });
         }
-
-
-        // =========================================================
-        // 9. Collect network evidence selected
-        //    by the AI Agent
-        // =========================================================
 
         const signals =
             await collectSelectedEvidence(
@@ -424,11 +348,6 @@ export async function trustCheck(
 
                 phoneNumber
             );
-
-
-        // =========================================================
-        // 10. Analyze OTP behavior
-        // =========================================================
 
         let otpActivity = null;
 
@@ -447,11 +366,6 @@ export async function trustCheck(
 
                     attemptCount
                 );
-
-
-            // -----------------------------------------------------
-            // Save OTP bombing as RiskSignal
-            // -----------------------------------------------------
 
             await prisma.riskSignal.create({
 
@@ -482,11 +396,6 @@ export async function trustCheck(
                 },
             });
 
-
-            // -----------------------------------------------------
-            // Add behavioral signal to response
-            // -----------------------------------------------------
-
             signals.push({
 
                 signalType:
@@ -510,11 +419,6 @@ export async function trustCheck(
                     otpActivity.details,
             });
         }
-
-
-        // =========================================================
-        // 11. Calculate final TrustPass decision
-        // =========================================================
 
         const decisionResult =
             calculateTrustDecision({
@@ -541,11 +445,6 @@ export async function trustCheck(
                     ),
             });
 
-
-        // =========================================================
-        // 12. Save TrustDecision and complete request
-        // =========================================================
-
         const savedDecision =
             await saveTrustDecision(
 
@@ -553,11 +452,6 @@ export async function trustCheck(
 
                 decisionResult
             );
-
-
-        // =========================================================
-        // 13. Record API usage
-        // =========================================================
 
         await recordApiUsage(
 
@@ -574,11 +468,6 @@ export async function trustCheck(
             trustRequest.requestId
         );
 
-
-        // =========================================================
-        // 14. Return TrustPass result
-        // =========================================================
-
         return res.status(200).json({
 
             requestId:
@@ -586,11 +475,6 @@ export async function trustCheck(
 
             status:
                 "COMPLETED",
-
-
-            // -----------------------------------------------------
-            // Protected action assessment
-            // -----------------------------------------------------
 
             assessment: {
 
@@ -600,11 +484,6 @@ export async function trustCheck(
                 evidenceRequirements:
                     assessment.evidenceRequirements,
             },
-
-
-            // -----------------------------------------------------
-            // AI Agent decision
-            // -----------------------------------------------------
 
             aiAgent: {
 
@@ -621,17 +500,7 @@ export async function trustCheck(
                     aiDecision.reason,
             },
 
-
-            // -----------------------------------------------------
-            // Collected risk signals
-            // -----------------------------------------------------
-
             signals,
-
-
-            // -----------------------------------------------------
-            // Final TrustPass decision
-            // -----------------------------------------------------
 
             decision: {
 
@@ -647,7 +516,6 @@ export async function trustCheck(
                 explanation:
                     savedDecision.explanation,
             },
-
 
             message:
                 "Trust assessment completed",
