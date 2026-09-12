@@ -181,12 +181,14 @@ export function calculateTrustDecision(
     }
   }
 
-  // Multiple independent fraud indicators together are
-  // considered CRITICAL.
+  // A number the network confirms was BOTH recently SIM-swapped
+  // and recently moved to another device is treated as CRITICAL
+  // on its own — this is direct network-verified evidence, not a
+  // behavioral pattern, so it doesn't need repeated attempts (e.g.
+  // OTP bombing) to justify a block.
   if (
     hasNegativeSimSwap &&
-    hasNegativeDeviceSwap &&
-    hasNegativeOtpBombing
+    hasNegativeDeviceSwap
   ) {
     score = Math.min(score, 29);
   }
@@ -271,7 +273,7 @@ export function calculateTrustDecision(
     hasNegativeDeviceSwap
   ) {
     explanationParts.push(
-      "SIM and device swap indicators together increase confidence that the request is suspicious."
+      "The network confirmed both a recent SIM swap and a recent device swap for this number — strong, direct evidence of account takeover regardless of attempt history."
     );
   }
 
@@ -281,7 +283,7 @@ export function calculateTrustDecision(
     hasNegativeOtpBombing
   ) {
     explanationParts.push(
-      "Multiple independent fraud indicators are present."
+      "Repeated OTP activity further reinforces these network-confirmed fraud indicators."
     );
   }
 

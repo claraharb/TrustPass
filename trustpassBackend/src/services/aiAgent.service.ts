@@ -664,6 +664,7 @@ function fallbackAgentDecision(
         "SIM_SWAP",
         "NUMBER_VERIFICATION",
         "DEVICE_STATUS",
+        "DEVICE_SWAP",
         "DEVICE_ROAMING",
       ];
 
