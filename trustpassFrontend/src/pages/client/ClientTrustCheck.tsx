@@ -109,7 +109,22 @@ export function ClientTrustCheck() {
                         <div className="client-result-meta"><span>Risk level <strong>{result.decision.riskLevel}</strong></span><span>Request <strong>{result.requestId}</strong></span></div>
                         <p className="client-result-explanation">{result.decision.explanation || result.message}</p>
                         {result.aiAgent && <div className="client-ai-note"><span>AI evidence plan</span><p>{result.aiAgent.reason}</p><small>{result.aiAgent.selectedSignals.join(" · ")}</small></div>}
-                        {!!result.signals?.length && <div className="client-signal-list"><span className="client-result-label">Collected signals</span>{result.signals.map((signal, index) => <div className="client-signal-row" key={`${signal.signalType}-${index}`}><span className={signal.isPositive ? "positive" : "negative"}>{signal.isPositive ? "Positive" : "Review"}</span><strong>{signal.signalType.replaceAll("_", " ")}</strong><small>{signal.details || signal.value || signal.source}</small></div>)}</div>}
+                        {!!result.signals?.length && <div className="client-signal-list">
+                            <span className="client-result-label">Collected signals</span>
+                            {result.signals.map((signal, index) => {
+                                const isDegraded = signal.source === 'CAMARA' && (!signal.isPositive && signal.details?.toLowerCase().includes('failed'));
+                                const isDemo = signal.source === 'CAMARA' && signal.isPositive && signal.value === 'Mock/Demo Data';
+                                return (
+                                    <div className={`client-signal-row ${isDegraded ? 'degraded' : ''}`} key={`${signal.signalType}-${index}`}>
+                                        <span className={isDegraded ? 'neutral' : (signal.isPositive ? "positive" : "negative")}>
+                                            {isDegraded ? 'Unavailable' : (signal.isPositive ? "Positive" : "Review")}
+                                        </span>
+                                        <strong>{signal.signalType.replaceAll("_", " ")} {isDemo && <span style={{fontSize: '0.7em', padding: '2px 4px', background: '#e0e0e0', borderRadius: '4px', marginLeft: '4px'}}>Demo</span>}</strong>
+                                        <small>{signal.details || signal.value || signal.source}</small>
+                                    </div>
+                                );
+                            })}
+                        </div>}
                     </div>}
                 </section>
             </div>

@@ -6,6 +6,7 @@ import {
   getClientApiKeys,
   revokeClientApiKey,
   rotateClientApiKey,
+  testApiKeyValidation,
   type ClientApiKey,
   type NewlyCreatedClientApiKey,
 } from '../../services/api';
@@ -114,6 +115,59 @@ export function ClientApiKeys() {
       ) : (
         <section className="client-key-table"><table><thead><tr><th>Key</th><th>Status</th><th>Created</th><th>Usage</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{apiKeys.map((apiKey) => <tr key={apiKey.id}><td><code>{apiKey.keyPrefix}</code></td><td><span className={`client-key-status ${apiKey.status === 'REVOKED' ? 'revoked' : ''}`}>{apiKey.status === 'ACTIVE' ? 'Active' : 'Revoked'}</span></td><td>{formatDate(apiKey.createdAt)}</td><td>{apiKey.usageCount?.toLocaleString() ?? '0'} requests</td><td><div className="client-key-actions">{apiKey.status === 'ACTIVE' && <><button type="button" onClick={() => void handleRotate(apiKey)} disabled={isWorking}><RotateCw size={14} /> Rotate</button><button type="button" className="danger" onClick={() => void handleRevoke(apiKey)} disabled={isWorking}><ShieldAlert size={14} /> Revoke</button></>}</div></td></tr>)}</tbody></table></section>
       )}
+
+      {apiKeys.length > 0 && (
+        <DiagnosticPanel />
+      )}
     </div>
+  );
+}
+
+function DiagnosticPanel() {
+  const [testKey, setTestKey] = useState('');
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+
+  const runTest = async () => {
+    if (!testKey.trim()) return;
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const res = await testApiKeyValidation(testKey);
+      setTestResult(`Success: ${res.message} (Client ID: ${res.client.id})`);
+    } catch (err) {
+      setTestResult(`Error: ${err instanceof Error ? err.message : 'Validation failed'}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  return (
+    <section className="client-panel client-diagnostic">
+      <div className="client-panel-heading">
+        <div className="client-card-icon"><ShieldAlert size={20} /></div>
+        <div><h2>Diagnostic Tool</h2><p>Verify that your API key is correctly configured and active.</p></div>
+      </div>
+      <div className="client-diagnostic-form">
+        <input
+          type="password"
+          placeholder="Paste API key secret..."
+          value={testKey}
+          onChange={(e) => setTestKey(e.target.value)}
+        />
+        <button
+          className="client-secondary-button"
+          onClick={() => void runTest()}
+          disabled={!testKey.trim() || isTesting}
+        >
+          {isTesting ? 'Testing...' : 'Test Validation'}
+        </button>
+      </div>
+      {testResult && (
+        <div className={`client-diagnostic-result ${testResult.startsWith('Error') ? 'error' : ''}`}>
+          {testResult}
+        </div>
+      )}
+    </section>
   );
 }

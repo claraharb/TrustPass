@@ -114,7 +114,7 @@ export function ClientHome() {
       <section className="client-workspace-grid">
         <article className="client-workspace-card"><span className="client-card-icon"><KeyRound size={20} /></span><h3>Create an API key</h3><p>Connect your application securely and keep production credentials under control.</p><Link to="/client/api-keys">Manage API keys <ArrowRight size={14} /></Link></article>
         <article className="client-workspace-card"><span className="client-card-icon"><ShieldCheck size={20} /></span><h3>Run a trust check</h3><p>Evaluate a sensitive action with network signals before it reaches your system.</p><Link to="/client/trust-check">Open trust lab <ArrowRight size={14} /></Link></article>
-        <article className="client-workspace-card"><span className="client-card-icon"><Activity size={20} /></span><h3>Monitor usage</h3><p>Track request volume and remaining capacity as your integration comes online.</p><span className="client-card-muted">Next milestone</span></article>
+        <article className="client-workspace-card"><span className="client-card-icon"><Activity size={20} /></span><h3>Monitor usage</h3><p>Track request volume and remaining capacity as your integration comes online.</p><span className="client-card-muted">Coming soon</span></article>
       </section>
     </div>
   );

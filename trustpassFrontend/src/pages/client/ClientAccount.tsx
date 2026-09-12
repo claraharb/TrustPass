@@ -57,6 +57,7 @@ export function ClientAccount() {
           <h1>Account settings</h1>
           <p>Manage the identity and credentials used to access your TrustPass workspace.</p>
         </div>
+        <div className="client-header-actions" aria-hidden="true" />
       </div>
 
       {message && <p className="client-account-message" role="status">{message}</p>}

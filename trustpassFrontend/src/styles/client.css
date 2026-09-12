@@ -739,11 +739,39 @@
 }
 
 .client-key-notice {
+  position: relative;
   margin-bottom: 24px;
   padding: 18px 20px;
   border: 1px solid var(--teal-border);
   border-radius: var(--radius-md);
   background: var(--teal-light);
+}
+
+.client-key-dismiss {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+.client-key-dismiss:hover {
+  background: rgba(255, 255, 255, .72);
+  color: var(--navy);
+}
+
+.client-key-dismiss:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
 }
 
 .client-key-notice strong {
@@ -904,6 +932,57 @@
 
 .client-key-empty .client-primary-button {
   padding: 0 17px;
+}
+
+.client-diagnostic {
+  margin-top: 24px;
+}
+
+.client-diagnostic-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.client-diagnostic-form input {
+  min-width: 0;
+  flex: 1;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.client-diagnostic-form input:focus {
+  outline: 2px solid var(--teal-border);
+  outline-offset: 1px;
+  border-color: var(--teal);
+}
+
+.client-diagnostic-form .client-secondary-button {
+  flex: 0 0 auto;
+}
+
+.client-diagnostic-result {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+}
+
+.client-diagnostic-result.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
 }
 
 .client-account-grid {
@@ -1468,5 +1547,14 @@
 
   .client-key-table table {
     min-width: 680px;
+  }
+
+  .client-diagnostic-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .client-diagnostic-form .client-secondary-button {
+    justify-content: center;
   }
 }
