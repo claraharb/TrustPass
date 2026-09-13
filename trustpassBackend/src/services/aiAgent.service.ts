@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-
 export interface TrustAgentInput {
   action: string;
   phoneNumber?: string;
@@ -10,7 +9,6 @@ export interface TrustAgentInput {
   actionRiskLevel: "LOW" | "MEDIUM" | "HIGH";
 }
 
-
 export interface TrustAgentDecision {
   riskAssessment: "LOW" | "MEDIUM" | "HIGH";
   selectedSignals: string[];
@@ -18,23 +16,13 @@ export interface TrustAgentDecision {
   reason: string;
 }
 
-
-const apiKey =
-  process.env.GEMINI_API_KEY;
-
+const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  throw new Error(
-    "GEMINI_API_KEY is not defined"
-  );
+  throw new Error("GEMINI_API_KEY is not defined");
 }
 
-
-const client =
-  new GoogleGenAI({
-    apiKey,
-  });
-
+const client = new GoogleGenAI({ apiKey });
 
 /**
  * The AI Agent analyzes the transaction and determines which
@@ -42,11 +30,9 @@ const client =
  * make the final ALLOW / CHALLENGE / BLOCK decision — it only
  * selects evidence for the deterministic Trust Engine to use.
  */
-
 export async function runTrustAgent(
   input: TrustAgentInput
 ): Promise<TrustAgentDecision> {
-
   const prompt = `
 You are TrustPass AI, an intelligent fraud-prevention
 and telecom-evidence orchestration agent.
@@ -394,134 +380,49 @@ true
 false
 `;
 
-
   try {
+    const interaction = await client.interactions.create({
+      model: "gemini-3.6-flash",
+      input: prompt,
+    });
 
-    console.log(
-      "🤖 TrustPass AI Agent analyzing request..."
-    );
-
-
-    const interaction =
-      await client.interactions.create({
-
-        model:
-          "gemini-3.6-flash",
-
-        input:
-          prompt,
-      });
-
-
-    const text =
-      interaction.output_text?.trim();
-
+    const text = interaction.output_text?.trim();
 
     if (!text) {
-
-      throw new Error(
-        "AI Agent returned an empty response"
-      );
+      throw new Error("AI Agent returned an empty response");
     }
 
+    const cleanedText = cleanJsonResponse(text);
+    const parsed = JSON.parse(cleanedText) as TrustAgentDecision;
 
-    console.log(
-      "🤖 AI Agent raw response:"
-    );
-
-    console.log(text);
-
-
-    const cleanedText =
-      cleanJsonResponse(text);
-
-
-    const parsed =
-      JSON.parse(
-        cleanedText
-      ) as TrustAgentDecision;
-
-
-    validateAgentDecision(
-      parsed
-    );
-
-
-    console.log(
-      "🤖 AI Agent decision:"
-    );
-
-
-    console.log(
-      JSON.stringify(
-        parsed,
-        null,
-        2
-      )
-    );
-
+    validateAgentDecision(parsed);
 
     return parsed;
-
   } catch (error) {
-
-    console.error(
-      "TrustPass AI Agent failed:",
-      error
-    );
+    console.error("TrustPass AI Agent failed:", error);
 
     // If Gemini is unavailable, rate-limited, or returns
     // invalid data, fall back to deterministic logic.
-    return fallbackAgentDecision(
-      input
-    );
+    return fallbackAgentDecision(input);
   }
 }
-
 
 /**
  * Removes accidental markdown code fences from a Gemini response.
  */
-
-function cleanJsonResponse(
-  text: string
-): string {
-
+function cleanJsonResponse(text: string): string {
   return text
-
-    .replace(
-      /^```json\s*/i,
-      ""
-    )
-
-    .replace(
-      /^```\s*/i,
-      ""
-    )
-
-    .replace(
-      /```\s*$/i,
-      ""
-    )
-
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
     .trim();
 }
-
 
 /**
  * Never blindly trust an LLM response.
  */
-
-function validateAgentDecision(
-  decision: TrustAgentDecision
-): void {
-
-  const validRiskLevels = [
-    "LOW",
-    "MEDIUM",
-    "HIGH",
-  ];
-
+function validateAgentDecision(decision: TrustAgentDecision): void {
+  const validRiskLevels = ["LOW", "MEDIUM", "HIGH"];
 
   const validSignals = [
     "NUMBER_VERIFICATION",
@@ -532,293 +433,121 @@ function validateAgentDecision(
     "LOCATION_VERIFICATION",
   ];
 
-
-  // ==========================================================
-  // VALIDATE RISK ASSESSMENT
-  // ==========================================================
-
-  if (
-    !validRiskLevels.includes(
-      decision.riskAssessment
-    )
-  ) {
-
-    throw new Error(
-      "AI Agent returned an invalid risk assessment"
-    );
+  if (!validRiskLevels.includes(decision.riskAssessment)) {
+    throw new Error("AI Agent returned an invalid risk assessment");
   }
 
-
-  if (
-    !Array.isArray(
-      decision.selectedSignals
-    )
-  ) {
-
-    throw new Error(
-      "AI Agent returned invalid selectedSignals"
-    );
+  if (!Array.isArray(decision.selectedSignals)) {
+    throw new Error("AI Agent returned invalid selectedSignals");
   }
 
-  if (
-    decision.selectedSignals.length > 4
-  ) {
-
-    throw new Error(
-      "AI Agent selected too many network signals"
-    );
+  if (decision.selectedSignals.length > 4) {
+    throw new Error("AI Agent selected too many network signals");
   }
 
-  for (
-    const signal
-    of decision.selectedSignals
-  ) {
-
-    if (
-      !validSignals.includes(
-        signal
-      )
-    ) {
-
-      throw new Error(
-        `AI Agent returned invalid signal: ${signal}`
-      );
+  for (const signal of decision.selectedSignals) {
+    if (!validSignals.includes(signal)) {
+      throw new Error(`AI Agent returned invalid signal: ${signal}`);
     }
   }
 
-
-  if (
-    typeof decision.additionalEvidenceNeeded !==
-    "boolean"
-  ) {
-
-    throw new Error(
-      "AI Agent returned invalid additionalEvidenceNeeded"
-    );
+  if (typeof decision.additionalEvidenceNeeded !== "boolean") {
+    throw new Error("AI Agent returned invalid additionalEvidenceNeeded");
   }
 
   if (
-    typeof decision.reason !==
-      "string" ||
-    decision.reason.trim()
-      .length === 0
+    typeof decision.reason !== "string" ||
+    decision.reason.trim().length === 0
   ) {
-
-    throw new Error(
-      "AI Agent returned invalid reason"
-    );
+    throw new Error("AI Agent returned invalid reason");
   }
 
-
-  // A LOW-risk transaction should not request additional
-  // evidence unless there is a specific suspicious context.
-  // The AI response doesn't provide a separate suspicious
-  // flag, so this combination is rejected and left to the
-  // deterministic fallback instead.
+  // A LOW-risk transaction should not request additional evidence
+  // unless there is a specific suspicious context. The AI response
+  // doesn't provide a separate suspicious flag, so this combination
+  // is rejected and left to the deterministic fallback instead.
   if (
     decision.riskAssessment === "LOW" &&
     decision.additionalEvidenceNeeded === true
   ) {
-
     throw new Error(
       "AI Agent returned inconsistent LOW risk assessment with additionalEvidenceNeeded=true"
     );
   }
 }
 
-
 /**
  * Deterministic fallback used when Gemini is unavailable,
  * rate-limited, or returns invalid data.
  */
-
-function fallbackAgentDecision(
-  input: TrustAgentInput
-): TrustAgentDecision {
-
-  console.log(
-    "⚠️ Using TrustPass AI fallback logic"
-  );
-
-  if (
-    input.action ===
-    "OTP_REQUEST"
-  ) {
-
+function fallbackAgentDecision(input: TrustAgentInput): TrustAgentDecision {
+  if (input.action === "OTP_REQUEST") {
     const suspiciousOtpActivity =
-      input.attemptCount !==
-        undefined &&
-      input.attemptCount >= 5;
+      input.attemptCount !== undefined && input.attemptCount >= 5;
 
-
-    let selectedSignals: string[];
-
-
-    if (
-      suspiciousOtpActivity ||
-      input.actionRiskLevel ===
-        "HIGH"
-    ) {
-
-      selectedSignals = [
-        "SIM_SWAP",
-        "NUMBER_VERIFICATION",
-        "DEVICE_STATUS",
-        "DEVICE_SWAP",
-        "DEVICE_ROAMING",
-      ];
-
-    } else {
-
-      selectedSignals = [
-        "SIM_SWAP",
-        "NUMBER_VERIFICATION",
-      ];
-    }
-
+    const selectedSignals =
+      suspiciousOtpActivity || input.actionRiskLevel === "HIGH"
+        ? [
+            "SIM_SWAP",
+            "NUMBER_VERIFICATION",
+            "DEVICE_STATUS",
+            "DEVICE_SWAP",
+            "DEVICE_ROAMING",
+          ]
+        : ["SIM_SWAP", "NUMBER_VERIFICATION"];
 
     return {
-
-      riskAssessment:
-        suspiciousOtpActivity
-          ? "HIGH"
-          : input.actionRiskLevel,
-
-
-      selectedSignals:
-        selectedSignals,
-
-
+      riskAssessment: suspiciousOtpActivity ? "HIGH" : input.actionRiskLevel,
+      selectedSignals,
       additionalEvidenceNeeded:
-        suspiciousOtpActivity ||
-        input.actionRiskLevel ===
-          "HIGH",
-
-
-      reason:
-        suspiciousOtpActivity
-
-          ? "AI service unavailable. Repeated OTP requests require stronger telecom and device-context evidence."
-
-          : input.actionRiskLevel ===
-            "HIGH"
-
-            ? "AI service unavailable. High-risk OTP request requires stronger telecom evidence."
-
-            : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
+        suspiciousOtpActivity || input.actionRiskLevel === "HIGH",
+      reason: suspiciousOtpActivity
+        ? "AI service unavailable. Repeated OTP requests require stronger telecom and device-context evidence."
+        : input.actionRiskLevel === "HIGH"
+          ? "AI service unavailable. High-risk OTP request requires stronger telecom evidence."
+          : "AI service unavailable. TrustPass selected essential telecom evidence for the OTP request.",
     };
   }
 
-  if (
-    input.action ===
-    "LOGIN"
-  ) {
+  if (input.action === "LOGIN") {
+    let selectedSignals: string[] = [];
 
-    let selectedSignals:
-      string[] = [];
-
-
-    if (
-      input.phoneNumber
-    ) {
-
-      selectedSignals = [
-        "NUMBER_VERIFICATION",
-        "SIM_SWAP",
-      ];
+    if (input.phoneNumber) {
+      selectedSignals = ["NUMBER_VERIFICATION", "SIM_SWAP"];
 
       // High-risk login gets additional roaming context.
-      if (
-        input.actionRiskLevel ===
-        "HIGH"
-      ) {
-
-        selectedSignals.push(
-          "DEVICE_ROAMING"
-        );
+      if (input.actionRiskLevel === "HIGH") {
+        selectedSignals.push("DEVICE_ROAMING");
       }
     }
 
-
     return {
-
-      riskAssessment:
-        input.actionRiskLevel,
-
-
-      selectedSignals:
-        selectedSignals,
-
-
-      additionalEvidenceNeeded:
-        input.actionRiskLevel ===
-          "HIGH",
-
-
+      riskAssessment: input.actionRiskLevel,
+      selectedSignals,
+      additionalEvidenceNeeded: input.actionRiskLevel === "HIGH",
       reason:
-        input.actionRiskLevel ===
-          "HIGH"
-
+        input.actionRiskLevel === "HIGH"
           ? "AI service unavailable. TrustPass selected authentication evidence and roaming context for the high-risk login."
-
           : "AI service unavailable. TrustPass selected authentication-related telecom evidence.",
     };
   }
 
-  if (
-    input.actionRiskLevel ===
-    "HIGH"
-  ) {
-
+  if (input.actionRiskLevel === "HIGH") {
     return {
-
-      riskAssessment:
-        "HIGH",
-
-
-      selectedSignals:
-        input.phoneNumber
-
-          ? [
-              "NUMBER_VERIFICATION",
-              "SIM_SWAP",
-              "DEVICE_SWAP",
-              "DEVICE_ROAMING",
-            ]
-
-          : [],
-
-
-      additionalEvidenceNeeded:
-        true,
-
-
+      riskAssessment: "HIGH",
+      selectedSignals: input.phoneNumber
+        ? ["NUMBER_VERIFICATION", "SIM_SWAP", "DEVICE_SWAP", "DEVICE_ROAMING"]
+        : [],
+      additionalEvidenceNeeded: true,
       reason:
         "AI service unavailable. TrustPass selected conservative telecom and device-context evidence for the high-risk action.",
     };
   }
 
   return {
-
-    riskAssessment:
-      input.actionRiskLevel,
-
-
-    selectedSignals:
-      input.phoneNumber
-
-        ? [
-            "NUMBER_VERIFICATION",
-          ]
-
-        : [],
-
-
-    additionalEvidenceNeeded:
-      false,
-
-
-    reason:
-      "AI service unavailable. TrustPass selected conservative fallback evidence.",
+    riskAssessment: input.actionRiskLevel,
+    selectedSignals: input.phoneNumber ? ["NUMBER_VERIFICATION"] : [],
+    additionalEvidenceNeeded: false,
+    reason: "AI service unavailable. TrustPass selected conservative fallback evidence.",
   };
 }
