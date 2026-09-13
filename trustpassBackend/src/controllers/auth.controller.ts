@@ -47,6 +47,23 @@ export async function registerClient(req: Request, res: Response) {
       select: { id: true, name: true, email: true },
     });
 
+    await prisma.protectedAction.createMany({
+      data: [
+        {
+          clientId: client.id,
+          name: "LOGIN",
+          description: "Sign-in and account access protection.",
+          riskLevel: "MEDIUM",
+        },
+        {
+          clientId: client.id,
+          name: "OTP_REQUEST",
+          description: "One-time passcode request protection.",
+          riskLevel: "HIGH",
+        },
+      ],
+    });
+
     const token = jwt.sign(
       { clientId: client.id, role: "CLIENT" },
       process.env.JWT_SECRET!,

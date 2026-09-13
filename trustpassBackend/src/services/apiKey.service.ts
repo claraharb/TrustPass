@@ -2,27 +2,21 @@ import crypto from "crypto";
 import prisma from "../config/prisma";
 
 export function generateApiKey() {
-    const rawKey = `tp_live_${crypto.randomBytes(32).toString("hex")}`;
+  const rawKey = `tp_live_${crypto.randomBytes(32).toString("hex")}`;
 
-    const keyHash = crypto
-        .createHash("sha256")
-        .update(rawKey)
-        .digest("hex");
+  const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
-    const keyPrefix = rawKey.substring(0, 12);
+  const keyPrefix = rawKey.substring(0, 12);
 
-    return {
-        rawKey,
-        keyHash,
-        keyPrefix,
-    };
+  return {
+    rawKey,
+    keyHash,
+    keyPrefix,
+  };
 }
 
 export async function validateApiKey(rawKey: string) {
-  const keyHash = crypto
-    .createHash("sha256")
-    .update(rawKey)
-    .digest("hex");
+  const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
   const apiKey = await prisma.apiKey.findUnique({
     where: {

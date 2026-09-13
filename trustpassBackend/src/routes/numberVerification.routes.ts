@@ -6,14 +6,8 @@ import {
 
 const router = Router();
 
-router.get(
-  "/start",
-  startNumberVerification
-);
+router.get("/start", startNumberVerification);
 
-router.get(
-  "/callback",
-  numberVerificationCallback
-);
+router.get("/callback", numberVerificationCallback);
 
 export default router;
