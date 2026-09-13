@@ -24,10 +24,7 @@ router.use("/client/subscriptions", subscriptionRoutes);
 router.use("/client/api-keys", apiKeyRoutes);
 router.use("/trust", trustRoutes);
 router.use("/client", clientRoutes);
-router.use(
-  "/camara/number-verification",
-  numberVerificationRoutes
-);
+router.use("/camara/number-verification", numberVerificationRoutes);
 
 router.get("/health", async (req, res) => {
   try {
